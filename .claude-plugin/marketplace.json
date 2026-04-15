@@ -1,0 +1,19 @@
+{
+  "name": "harkairt-claude-marketplace",
+  "owner": {
+    "name": "harkairt"
+  },
+  "version": "1.0.1",
+  "plugins": [
+    {
+      "name": "print-hook-inputs",
+      "source": "./plugins/print-hook-input-plugin",
+      "description": "A plugin that defines printing hook inputs for development purposes"
+    },
+    {
+      "name": "general",
+      "source": "./plugins/general",
+      "description": "A plugin that defines opinionated general goodies."
+    }
+  ]
+}
