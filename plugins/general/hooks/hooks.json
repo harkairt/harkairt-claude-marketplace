@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/block-edits-in-plan-mode.sh"
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/block-edits-in-plan-mode.sh"
           }
         ]
       }
