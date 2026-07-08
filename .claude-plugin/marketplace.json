@@ -3,7 +3,7 @@
   "owner": {
     "name": "harkairt"
   },
-  "version": "1.0.3",
+  "version": "1.0.5",
   "plugins": [
     {
       "name": "print-hook-inputs",
@@ -14,6 +14,11 @@
       "name": "general",
       "source": "./plugins/general",
       "description": "A plugin that defines opinionated general goodies."
+    },
+    {
+      "name": "caffeinate-claude",
+      "source": "./plugins/caffeinate-claude",
+      "description": "A plugin that prevents the Mac from sleeping while Claude is active."
     }
   ]
 }
