@@ -19,6 +19,11 @@
       "name": "caffeinate-claude",
       "source": "./plugins/caffeinate-claude",
       "description": "A plugin that prevents the Mac from sleeping while Claude is active."
+    },
+    {
+      "name": "comment-kill",
+      "source": "./plugins/comment-kill",
+      "description": "A plugin that kills comments in the code."
     }
   ]
 }
