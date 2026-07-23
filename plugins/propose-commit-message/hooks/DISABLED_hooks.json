@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/propose-commit-message.sh",
+            "timeout": 10,
+            "asyncRewake": true,
+            "rewakeSummary": "Proposed commit message"
+          }
+        ]
+      }
+    ]
+  }
+}

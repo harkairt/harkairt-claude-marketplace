@@ -3,7 +3,7 @@
   "owner": {
     "name": "harkairt"
   },
-  "version": "1.0.5",
+  "version": "1.0.7",
   "plugins": [
     {
       "name": "print-hook-inputs",
@@ -24,6 +24,16 @@
       "name": "comment-kill",
       "source": "./plugins/comment-kill",
       "description": "A plugin that kills comments in the code."
+    },
+    {
+      "name": "force-evaluate-skills",
+      "source": "./plugins/force-evaluate-skills",
+      "description": "A plugin that forces evaluation of skills."
+    },
+    {
+      "name": "propose-commit-message",
+      "source": "./plugins/propose-commit-message",
+      "description": "A plugin that proposes commit messages."
     }
   ]
 }
