@@ -74,6 +74,6 @@ find "$MARKER_ROOT" -type f -mmin +60 -delete 2>/dev/null || true
 {
   echo "comment-kill: this edit adds comment line(s):"
   printf '%s\n' "$added"
-  echo "Remove every comment that does not state a non-obvious constraint the code cannot express. If you judge ALL of them truly necessary, resubmit the identical edit and it will be allowed."
+  echo "Remove every comment that does not state a non-obvious constraint the code cannot express. If you judge ALL of them truly necessary, resubmit the identical edit and it will be allowed — but prefer adding them via a separate, small Edit rather than resubmitting a large payload, to keep the retry cheap."
 } >&2
 exit 2
