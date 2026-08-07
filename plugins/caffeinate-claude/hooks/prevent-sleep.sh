@@ -42,3 +42,9 @@ PMSET_STATE="/tmp/claude_caffeinate_cmd.pmset_active"
 if sudo -n /usr/bin/pmset -a disablesleep 1 2>/dev/null; then
     touch "$PMSET_STATE"
 fi
+
+BRIGHTNESS_BIN="$(dirname "$0")/brightness"
+BRIGHTNESS_STATE="/tmp/claude_caffeinate_cmd.brightness"
+if [ ! -f "$BRIGHTNESS_STATE" ] && [ -x "$BRIGHTNESS_BIN" ]; then
+    "$BRIGHTNESS_BIN" get > "$BRIGHTNESS_STATE" 2>/dev/null
+fi

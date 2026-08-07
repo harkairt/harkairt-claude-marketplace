@@ -57,6 +57,20 @@ setup_watchdog() {
 echo "=== caffeinate-claude setup ==="
 echo
 
+echo "Compiling brightness tool..."
+if swiftc "$PLUGIN_DIR/hooks/brightness.swift" -o "$PLUGIN_DIR/hooks/brightness" 2>/dev/null; then
+    if "$PLUGIN_DIR/hooks/brightness" get >/dev/null 2>&1; then
+        echo "Brightness tool compiled and working."
+    else
+        echo "WARNING: Brightness tool compiled but cannot read display brightness."
+        echo "  Lid-close dimming will be unavailable."
+    fi
+else
+    echo "WARNING: Failed to compile brightness tool (swiftc not found?)."
+    echo "  Lid-close dimming will be unavailable."
+fi
+echo
+
 setup_sudoers
 echo
 

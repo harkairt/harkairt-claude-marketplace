@@ -30,6 +30,14 @@ if [ -f "$PMSET_STATE" ]; then
     rm -f "$PMSET_STATE"
 fi
 
+BRIGHTNESS_BIN="$(dirname "$0")/brightness"
+BRIGHTNESS_STATE="/tmp/claude_caffeinate_cmd.brightness"
+LID_DIMMED="/tmp/claude_caffeinate_cmd.lid_dimmed"
+if [ -f "$BRIGHTNESS_STATE" ] && [ -x "$BRIGHTNESS_BIN" ]; then
+    "$BRIGHTNESS_BIN" set "$(cat "$BRIGHTNESS_STATE")" 2>/dev/null
+    rm -f "$BRIGHTNESS_STATE" "$LID_DIMMED"
+fi
+
 if [ -f "$PID_FILE" ]; then
     pid=$(cat "$PID_FILE")
     if ps -p "$pid" > /dev/null 2>&1 && ps -p "$pid" -o args= | grep -q '^caffeinate'; then
