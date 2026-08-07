@@ -24,7 +24,12 @@ if [ -d "$ACTIVE_DIR" ] && [ -n "$(ls -A "$ACTIVE_DIR" 2>/dev/null)" ]; then
     exit 0
 fi
 
-# No sessions left — kill caffeinate and clean up
+PMSET_STATE="/tmp/claude_caffeinate_cmd.pmset_active"
+if [ -f "$PMSET_STATE" ]; then
+    sudo -n /usr/bin/pmset -a disablesleep 0 2>/dev/null
+    rm -f "$PMSET_STATE"
+fi
+
 if [ -f "$PID_FILE" ]; then
     pid=$(cat "$PID_FILE")
     if ps -p "$pid" > /dev/null 2>&1 && ps -p "$pid" -o args= | grep -q '^caffeinate'; then

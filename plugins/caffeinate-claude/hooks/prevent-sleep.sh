@@ -34,6 +34,11 @@ if [ -f "$PID_FILE" ]; then
 fi
 
 if [ "$running" -eq 0 ]; then
-    nohup caffeinate -i -t "$timeout" > /dev/null 2>&1 &
+    nohup caffeinate -is -t "$timeout" > /dev/null 2>&1 &
     echo $! > "$PID_FILE"
+fi
+
+PMSET_STATE="/tmp/claude_caffeinate_cmd.pmset_active"
+if sudo -n /usr/bin/pmset -a disablesleep 1 2>/dev/null; then
+    touch "$PMSET_STATE"
 fi
