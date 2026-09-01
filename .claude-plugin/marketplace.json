@@ -3,7 +3,7 @@
   "owner": {
     "name": "harkairt"
   },
-  "version": "1.0.10",
+  "version": "1.0.11",
   "plugins": [
     {
       "name": "print-hook-inputs",
@@ -34,6 +34,11 @@
       "name": "propose-commit-message",
       "source": "./plugins/propose-commit-message",
       "description": "A plugin that proposes commit messages."
+    },
+    {
+      "name": "block-bash-file-writes",
+      "source": "./plugins/block-bash-file-writes",
+      "description": "A plugin that blocks file writes made through Bash. (https://www.reddit.com/r/ClaudeCode/comments/1vruj7h/comment/p5t3d9k)"
     }
   ]
 }
