@@ -3,7 +3,7 @@
   "owner": {
     "name": "harkairt"
   },
-  "version": "1.0.11",
+  "version": "1.0.12",
   "plugins": [
     {
       "name": "print-hook-inputs",
