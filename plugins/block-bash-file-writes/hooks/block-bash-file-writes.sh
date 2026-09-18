@@ -18,7 +18,7 @@ deny() {
 
 
 # in-place edits with sed / perl
-printf '%s' "$cmd" | grep -qE '(^|[|;&[:space:]])(sed|perl)[[:space:]]+[^|;&]*-i' &&
+printf '%s' "$cmd" | grep -qE '(^|[|;&[:space:]])(sed|perl)[[:space:]]+([^|;&]*[[:space:]])?(-[a-zA-Z]*i|--in-place)' &&
   deny "Editing files from Bash is not allowed (sed -i). Use Read + Edit instead."
 
 
