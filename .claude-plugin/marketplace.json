@@ -3,7 +3,7 @@
   "owner": {
     "name": "harkairt"
   },
-  "version": "1.0.12",
+  "version": "1.0.13",
   "plugins": [
     {
       "name": "print-hook-inputs",
@@ -39,6 +39,11 @@
       "name": "block-bash-file-writes",
       "source": "./plugins/block-bash-file-writes",
       "description": "A plugin that blocks file writes made through Bash. (https://www.reddit.com/r/ClaudeCode/comments/1vruj7h/comment/p5t3d9k)"
+    },
+    {
+      "name": "context-awareness",
+      "source": "./plugins/context-awareness",
+      "description": "A plugin that tells Claude how full its context window is, so it does not start work it cannot finish."
     }
   ]
 }

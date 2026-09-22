@@ -1,0 +1,3 @@
+WINDOW_TOKENS=           # empty: 200000, or 1000000 if usage is above 200000
+THRESHOLDS="50 60 70 80 90"
+WRAP_UP_AT=85            # at or above this %, the note includes the stop-and-report rule
