@@ -18,12 +18,12 @@ deny() {
 
 
 # in-place edits with sed / perl
-printf '%s' "$cmd" | grep -qE '(^|[|;&[:space:]])(sed|perl)[[:space:]]+([^|;&]*[[:space:]])?(-[a-zA-Z]*i|--in-place)' &&
+printf '%s' "$cmd" | grep -qE '(^|[|;&[:space:]])(sed|perl)[[:space:]]+([^|;&]*[[:space:]])?(-[a-zA-Z0-9]*i|--in-place)' &&
   deny "Editing files from Bash is not allowed (sed -i). Use Read + Edit instead."
 
 
 # writing to a file via redirection or heredoc
-printf '%s' "$cmd" | grep -qE '>[[:space:]]*[^|&>[:space:]]+\.(ts|tsx|js|jsx|vue|json|css|scss|html|md|sql|sh|yml|yaml|env)' &&
+printf '%s' "$cmd" | grep -qE '>[[:space:]]*[^|&>[:space:]]*\.(ts|tsx|js|jsx|vue|json|css|scss|html|md|sql|sh|yml|yaml|env)' &&
   deny "Writing files from Bash is not allowed (> redirection). Use Write or Edit instead."
 
 
