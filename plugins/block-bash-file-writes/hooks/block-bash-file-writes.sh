@@ -28,7 +28,8 @@ printf '%s' "$cmd" | grep -qE '>[[:space:]]*[^|&>[:space:]]*\.(ts|tsx|js|jsx|vue
 
 
 # opening a file for writing from an inline python/node script
-printf '%s' "$cmd" | grep -qE "(python3?|node)[^|;&]*(open\([^)]*['\"]w|writeFileSync|\.write\()" &&
+printf '%s' "$cmd" | grep -qE '(^|[|;&[:space:]])(python3?|node)([[:space:]]|$)' &&
+  printf '%s' "$cmd" | tr '\n' ' ' | grep -qE "open\([^)]*,[^)]*['\"][wa]|\.write\(|write_text|write_bytes|writeFile|appendFile" &&
   deny "Writing files from an inline script is not allowed. Use Write or Edit instead."
 
 

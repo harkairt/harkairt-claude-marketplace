@@ -48,6 +48,38 @@ printf "\n=== inline script writes ===\n"
 check block "python open(w)"                "python3 -c \"open('f','w').write('x')\""
 check block "node writeFileSync"            "node -e \"fs.writeFileSync('f','x')\""
 check allow "python read-only"              "python3 -c \"print('hello')\""
+check block "python heredoc with ; and open(w)" "$(cat <<'CMD'
+python3 - "$f" <<'EOF'
+import sys;p=sys.argv[1];s=open(p).read()
+s=s.replace('a','b')
+open(p,'w').write(s)
+EOF
+CMD
+)"
+check block "python -c with ; before open(w)" "python3 -c \"import sys;open('f','w').write('x')\""
+check block "python heredoc write_text"     "$(cat <<'CMD'
+python3 - <<'EOF'
+from pathlib import Path
+Path('f').write_text('x')
+EOF
+CMD
+)"
+check block "python open(a) append"         "python3 -c \"print('x', file=open('f','a'))\""
+check block "node heredoc appendFileSync"   "$(cat <<'CMD'
+node - <<'EOF'
+const fs = require('fs');
+fs.appendFileSync('f', 'x');
+EOF
+CMD
+)"
+check allow "python heredoc read-only"      "$(cat <<'CMD'
+python3 - <<'EOF'
+print(open('f').read())
+EOF
+CMD
+)"
+check allow "python open() of file starting with a" "python3 -c \"print(open('app.py').read())\""
+check allow "no python/node"                "git commit -m \"fix open write\""
 
 printf "\n=== edge cases ===\n"
 check allow "empty command"                 ""
