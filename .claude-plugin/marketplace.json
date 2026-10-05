@@ -3,7 +3,7 @@
   "owner": {
     "name": "harkairt"
   },
-  "version": "1.0.14",
+  "version": "1.0.15",
   "plugins": [
     {
       "name": "print-hook-inputs",
@@ -44,6 +44,11 @@
       "name": "context-awareness",
       "source": "./plugins/context-awareness",
       "description": "A plugin that tells Claude how full its context window is, so it does not start work it cannot finish."
+    },
+    {
+      "name": "playground",
+      "source": "./plugins/playground",
+      "description": "A playground plugin for testing and experimenting with Claude plugins."
     }
   ]
 }

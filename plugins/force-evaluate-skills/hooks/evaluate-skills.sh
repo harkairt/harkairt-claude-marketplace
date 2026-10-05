@@ -26,6 +26,8 @@ Example of correct sequence:
 > Skill(svelte5-runes)
 > Skill(sveltekit-structure)
 
+If you decide no additional skills are needed, then NO NEED TO DISCLOSE THAT, stay silent.
+
 [THEN and ONLY THEN start implementation]
 EOF
 )
