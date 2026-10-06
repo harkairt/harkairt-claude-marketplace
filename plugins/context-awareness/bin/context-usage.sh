@@ -41,14 +41,16 @@ USED_FILTER='
   | ([$e | to_entries[] | select(.value.type == "assistant" and .value.message.usage != null
         and .value.message.model != "<synthetic>") | .key] | last) as $a
   | ([$e | to_entries[] | select(.value.type == "system" and .value.subtype == "compact_boundary") | .key] | last) as $c
-  | if $c != null and ($a == null or $c > $a) then $e[$c].compactMetadata.postTokens
-    elif $a != null then $e[$a].message.usage
+  | if $c != null and ($a == null or $c > $a) then [$e[$c].compactMetadata.postTokens, true]
+    elif $a != null then [($e[$a].message.usage
       | (.input_tokens // 0) + (.cache_creation_input_tokens // 0)
-        + (.cache_read_input_tokens // 0) + (.output_tokens // 0)
-    else empty end'
+        + (.cache_read_input_tokens // 0) + (.output_tokens // 0)), false]
+    else empty end
+  | "\(.[0]) \(.[1])"'
 
-used="$(tail -n 500 "$transcript" | jq -Rn "$USED_FILTER")"
-[ -n "$used" ] || used="$(jq -Rn "$USED_FILTER" < "$transcript")"
+found="$(tail -n 500 "$transcript" | jq -Rnr "$USED_FILTER")"
+[ -n "$found" ] || found="$(jq -Rnr "$USED_FILTER" < "$transcript")"
+read -r used from_compact_boundary <<< "$found"
 if ! [[ "$used" =~ ^[0-9]+$ ]]; then
   echo "context-usage: no usage found in $transcript" >&2
   exit 1
@@ -67,8 +69,10 @@ jq -n \
   --arg session_id "$session" \
   --argjson used "$used" \
   --argjson window "$window" \
+  --argjson from_compact_boundary "$from_compact_boundary" \
   --arg updated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   '{session_id: $session_id, used_tokens: $used, window_tokens: $window,
-    used_pct: (($used * 100 / $window) | floor), updated_at: $updated_at}' > "$tmp"
+    used_pct: (($used * 100 / $window) | floor), from_compact_boundary: $from_compact_boundary,
+    updated_at: $updated_at}' > "$tmp"
 mv "$tmp" "$out"
 cat "$out"

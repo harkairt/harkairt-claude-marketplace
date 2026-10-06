@@ -34,10 +34,11 @@ compact() {
 }
 
 run_hook() {
-  local event="${1:-UserPromptSubmit}" agent="${2:-}" path="${3:-$tr}"
+  local event="${1:-UserPromptSubmit}" agent="${2:-}" path="${3:-$tr}" src="${4:-}"
   local input
-  input=$(jq -nc --arg s "$sid" --arg t "$path" --arg e "$event" --arg a "$agent" \
-    '{session_id: $s, transcript_path: $t, hook_event_name: $e} + (if $a == "" then {} else {agent_id: $a} end)')
+  input=$(jq -nc --arg s "$sid" --arg t "$path" --arg e "$event" --arg a "$agent" --arg src "$src" \
+    '{session_id: $s, transcript_path: $t, hook_event_name: $e} + (if $a == "" then {} else {agent_id: $a} end)
+     + (if $src == "" then {} else {source: $src} end)')
   out="$(printf '%s' "$input" | bash "$HOOK" 2>&1)" && code=0 || code=$?
 }
 
@@ -61,6 +62,10 @@ expect_note() {
 
 expect_no_wrap_up() {
   if [[ "$out" != *"Do not start work"* ]]; then ok "$1"; else ko "$1" "unexpected wrap-up line"; fi
+}
+
+expect_no_usage() {
+  if [[ "$out" != *"% used"* ]]; then ok "$1"; else ko "$1" "unexpected usage numbers"; fi
 }
 
 printf "=== thresholds ===\n"
@@ -96,6 +101,47 @@ run_hook; expect_silent "compact to 20% -> no output"
 [ "$(cat "$STATE_DIR/$sid.notified")" = "0" ] && ok "notified reset to 0" || ko "notified reset to 0" "$(cat "$STATE_DIR/$sid.notified")"
 user_line; assistant 110000
 run_hook; expect_note "55% after compaction -> note again" "55% used"
+
+printf "\n=== session start after compaction ===\n"
+new_session
+assistant 180000
+run_hook; expect_note "90% -> note with wrap-up line" "stopped because the context is at 90%"
+compact 31649
+run_hook SessionStart "" "$tr" compact
+expect_note "SessionStart/compact -> notice says earlier notices are out of date" "out of date" SessionStart
+expect_note "SessionStart/compact -> notice has post-compaction usage" "15% used (32k of 200k tokens)" SessionStart
+expect_no_wrap_up "SessionStart/compact at 15% -> no wrap-up line"
+[ "$(cat "$STATE_DIR/$sid.notified")" = "0" ] && ok "SessionStart/compact -> notified reset to 0" || ko "SessionStart/compact -> notified reset to 0" "$(cat "$STATE_DIR/$sid.notified")"
+user_line; assistant 110000
+run_hook; expect_note "55% after SessionStart/compact -> note again" "55% used"
+
+new_session
+assistant 110000
+run_hook; expect_note "55% -> note" "55% used"
+run_hook SessionStart "" "$tr" compact
+expect_note "SessionStart/compact before boundary is written -> notice" "out of date" SessionStart
+expect_no_usage "SessionStart/compact before boundary is written -> no pre-compaction numbers"
+[ "$(cat "$STATE_DIR/$sid.notified")" = "0" ] && ok "unknown usage -> notified reset to 0" || ko "unknown usage -> notified reset to 0" "$(cat "$STATE_DIR/$sid.notified")"
+
+new_session
+run_hook SessionStart "" "$TMP/does-not-exist.jsonl" compact
+expect_note "SessionStart/compact with missing transcript -> notice, exit 0" "out of date" SessionStart
+expect_no_usage "SessionStart/compact with missing transcript -> no numbers"
+
+new_session
+assistant 110000
+run_hook; expect_note "55% -> note" "55% used"
+run_hook SessionStart "" "$tr" startup; expect_silent "SessionStart/startup -> no output"
+[ "$(cat "$STATE_DIR/$sid.notified")" = "50" ] && ok "SessionStart/startup -> notified unchanged" || ko "SessionStart/startup -> notified unchanged" "$(cat "$STATE_DIR/$sid.notified")"
+
+new_session
+compact 31649
+run_hook SessionStart agent-123 "$tr" compact; expect_silent "SessionStart/compact with agent_id -> no output"
+
+new_session
+compact 176000
+run_hook SessionStart "" "$tr" compact
+expect_note "SessionStart/compact at 88% -> wrap-up line" "stopped because the context is at 88%" SessionStart
 
 printf "\n=== ignored entries ===\n"
 new_session
