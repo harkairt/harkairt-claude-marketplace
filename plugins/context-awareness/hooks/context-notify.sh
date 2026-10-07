@@ -19,9 +19,7 @@ fi
 
 state="$("$PLUGIN_ROOT/bin/context-usage.sh" --transcript "$transcript_path" --session "$session_id" 2>/dev/null)"
 
-. "$PLUGIN_ROOT/config"
-
-[ -f "$PLUGIN_ROOT/config" ] && . "$PLUGIN_ROOT/config"
+. "$PLUGIN_ROOT/config" 2>/dev/null || exit 0
 
 read -r used_tokens window_tokens used_pct from_boundary <<< "$(printf '%s' "$state" | jq -r '"\(.used_tokens) \(.window_tokens) \(.used_pct) \(.from_compact_boundary)"')" || exit 0
 known=true

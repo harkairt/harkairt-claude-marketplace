@@ -171,6 +171,16 @@ run_hook; expect_silent "transcript without usage -> exit 0, no output"
 out="$(printf 'not json' | bash "$HOOK" 2>&1)" && code=0 || code=$?
 expect_silent "invalid stdin -> exit 0, no output"
 
+mkdir -p "$TMP/no-config"
+cp -R "$ROOT/hooks" "$ROOT/bin" "$TMP/no-config/"
+new_session
+assistant 180000
+HOOK="$TMP/no-config/hooks/context-notify.sh" run_hook
+expect_silent "missing config at 90% -> exit 0, no output"
+compact 40000
+HOOK="$TMP/no-config/hooks/context-notify.sh" run_hook SessionStart "" "$tr" compact
+expect_silent "missing config, SessionStart/compact -> exit 0, no output"
+
 printf "\n=== CLI by session id ===\n"
 new_session
 mkdir -p "$TMP/home/.claude/projects/-some-project"
