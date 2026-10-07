@@ -60,6 +60,8 @@ window="${WINDOW_TOKENS:-}"
 if [ -z "$window" ]; then
   window=200000
   [ "$used" -le 200000 ] || window=1000000
+  prev="$(jq '.window_tokens | numbers' "$STATE_DIR/$session.json" 2>/dev/null)" || prev=""
+  [[ "$prev" =~ ^[0-9]+$ ]] && [ "$prev" -gt "$window" ] && window="$prev"
 fi
 
 mkdir -p "$STATE_DIR"

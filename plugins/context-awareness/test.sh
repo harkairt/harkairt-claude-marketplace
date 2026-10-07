@@ -163,6 +163,35 @@ assistant 300000
 state="$(bash "$USAGE" --transcript "$tr" --session "$sid")"
 [ "$(printf '%s' "$state" | jq -c '[.window_tokens, .used_pct]')" = "[1000000,30]" ] \
   && ok "300k with empty WINDOW_TOKENS -> 1M window, 30%" || ko "300k -> 1M window" "$state"
+compact 40000
+state="$(bash "$USAGE" --transcript "$tr" --session "$sid")"
+[ "$(printf '%s' "$state" | jq -c '[.window_tokens, .used_pct]')" = "[1000000,4]" ] \
+  && ok "compact 1M session to 40k -> window stays 1M, 4%" || ko "compact 1M session to 40k -> window stays 1M" "$state"
+
+new_session
+assistant 300000
+run_hook; expect_silent "300k in 1M window -> no output"
+compact 40000
+run_hook SessionStart "" "$tr" compact
+expect_note "SessionStart/compact in 1M session -> 1M window kept" "4% used (40k of 1000k tokens)" SessionStart
+
+new_session
+assistant 40000
+state="$(bash "$USAGE" --transcript "$tr" --session "$sid")"
+[ "$(printf '%s' "$state" | jq .window_tokens)" = "200000" ] \
+  && ok "new session at 40k -> 200k window" || ko "new session at 40k -> 200k window" "$state"
+
+new_session
+assistant 40000
+mkdir -p "$STATE_DIR"
+printf 'not json' > "$STATE_DIR/$sid.json"
+state="$(bash "$USAGE" --transcript "$tr" --session "$sid" 2>&1)" && code=0 || code=$?
+[ "$code" -eq 0 ] && [ "$(printf '%s' "$state" | jq .window_tokens 2>/dev/null)" = "200000" ] \
+  && ok "corrupt state file at 40k -> 200k window, exit 0" || ko "corrupt state file at 40k -> 200k window" "exit $code, $state"
+printf '{"window_tokens":"1000000"}' > "$STATE_DIR/$sid.json"
+state="$(bash "$USAGE" --transcript "$tr" --session "$sid" 2>&1)" && code=0 || code=$?
+[ "$code" -eq 0 ] && [ "$(printf '%s' "$state" | jq .window_tokens 2>/dev/null)" = "200000" ] \
+  && ok "non-numeric window_tokens in state file -> ignored" || ko "non-numeric window_tokens in state file -> ignored" "exit $code, $state"
 
 printf "\n=== failures ===\n"
 new_session
