@@ -106,6 +106,26 @@ export function effortMark(level: string | undefined): string {
   return (level !== undefined && EFFORT_MARKS[level]) || ''
 }
 
+function recordOf(value: unknown): Readonly<Record<string, unknown>> {
+  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
+}
+
+function effortLevelOf(value: unknown): string | undefined {
+  const level = recordOf(value).effortLevel
+
+  return typeof level === 'string' ? level : undefined
+}
+
+export function settingsEffort(settings: Readonly<Record<string, unknown>>, model: string): string | undefined {
+  const perModel = recordOf(settings.modelSettings)
+
+  return (
+    effortLevelOf(perModel[model]) ??
+    effortLevelOf(perModel[model.replace(/\[[^\]]*\]$/, '')]) ??
+    effortLevelOf(settings)
+  )
+}
+
 export function modelName(id: string): string {
   const match = /^claude-([a-z]+)-(\d+)(?:-(\d{1,2}))?(?:-\d{8})?(?:\[\w+\])?$/.exec(id)
   if (match === null) {

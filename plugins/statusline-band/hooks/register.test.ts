@@ -1,6 +1,14 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
-import type { FsEntry, FsStat, On, ProcessRunResult, SessionContextBreakdown, SessionUsage } from 'claude-code'
+import type {
+  FsEntry,
+  FsStat,
+  On,
+  ProcessRunResult,
+  SessionContextBreakdown,
+  SessionUsage,
+  Settings,
+} from 'claude-code'
 
 const PLUGIN = 'statusline-band'
 const HOME = '/Users/me'
@@ -29,6 +37,8 @@ type World = {
   plans: Plan[]
   usage: SessionUsage
   model: string
+  effort?: string
+  settings: Settings
 }
 
 function feature(): World {
@@ -68,6 +78,8 @@ function feature(): World {
       ],
     },
     model: 'claude-opus-5-5',
+    effort: 'xhigh',
+    settings: {},
   }
 }
 
@@ -86,7 +98,8 @@ function stat(plan: Plan, isResolved: boolean): FsStat {
 }
 
 function seat(on: On, world: World) {
-  mock.env(on, { HOME, CLAUDE_EFFORT: 'xhigh' })
+  mock.env(on, world.effort === undefined ? { HOME } : { HOME, CLAUDE_EFFORT: world.effort })
+  on('settings.read', () => ({ value: world.settings }))
   on('session.cwd', () => ({ value: world.cwd }))
   on('session.model', () => ({ value: world.model }))
   on('session.usage', () => ({ value: world.usage }))
@@ -212,16 +225,16 @@ test('paints line 1 with the colors and dim parts of the script', async ($, on) 
   expect(await painted(ui, '51k')).toEqual(['yellow', false])
   expect(await painted(ui, '/1m')).toEqual(['#585858', false])
   expect(await painted(ui, ' in ')).toEqual([undefined, true])
-  expect(await painted(ui, '~/repos/app/')).toEqual(['yellow', true])
+  expect(await painted(ui, '~/repos/app/')).toEqual(['#927846', false])
   expect(await painted(ui, 'src')).toEqual(['yellow', false])
   expect(await painted(ui, ' on ')).toEqual([undefined, true])
-  expect(await painted(ui, 'origin/')).toEqual(['yellow', true])
+  expect(await painted(ui, 'origin/')).toEqual(['#927846', false])
   expect(await painted(ui, 'feature')).toEqual(['yellow', false])
-  expect(await painted(ui, ' ⎇ 2 ~1?1')).toEqual(['yellow', true])
+  expect(await painted(ui, ' ⎇ 2 ~1?1')).toEqual(['#927846', false])
   expect(await painted(ui, ' using ')).toEqual([undefined, true])
   expect(await painted(ui, 'Opus 5.5⁴')).toEqual(['yellow', false])
   expect(await painted(ui, ' planned')).toEqual([undefined, true])
-  expect(await painted(ui, ' ~/dotfiles/claude/plans/new.md')).toEqual(['white', true])
+  expect(await painted(ui, ' ~/dotfiles/claude/plans/new.md')).toEqual(['#767676', false])
   await ui.unmount()
 })
 
@@ -236,7 +249,7 @@ test('paints line 2 with the colors and dim parts of the script', async ($, on) 
   expect(await painted(ui, '14:05')).toEqual(['white', false])
   expect(await painted(ui, '):')).toEqual([undefined, true])
   expect(await painted(ui, '●●●●◎')).toEqual(['green', false])
-  expect(await painted(ui, '○○○○○')).toEqual(['green', true])
+  expect(await painted(ui, '○○○○○')).toEqual(['#6f8652', false])
   expect(await painted(ui, '41%')).toEqual(['white', false])
   expect(await painted(ui, '|')).toEqual([undefined, true])
   expect(await painted(ui, 'weekly(')).toEqual([undefined, true])
@@ -265,6 +278,7 @@ test('paints the 256-color orange of the script as its hex', async ($, on) => {
   expect(await painted(ui, '110k')).toEqual(['#ff8700', false])
   expect(await painted(ui, '/200k')).toEqual(['#585858', false])
   expect(await painted(ui, '●●●●●●●◉')).toEqual(['#ff8700', false])
+  expect(await painted(ui, '○○')).toEqual(['#925613', false])
   expect(await ui.find({ type: 'Text', text: exactly('current(): ●●●●●●●◉○○ 75% | weekly(): ○○○○○○○○○○ 0%') }))
     .toBeDefined()
   await ui.unmount()
@@ -374,7 +388,7 @@ test('follows a change a tool made as soon as the call returns', async ($, on) =
   await $.tool.call({ tool: 'Bash', command: 'git add c.ts' })
   await clock.settle()
 
-  expect(await painted(ui, ' ⎇ 2 +1')).toEqual(['yellow', true])
+  expect(await painted(ui, ' ⎇ 2 +1')).toEqual(['#927846', false])
   await ui.unmount()
 })
 
@@ -485,6 +499,35 @@ test('drops the effort mark for a request that names no effort', async ($, on) =
   await ui.unmount()
 })
 
+test('marks the effort the settings set for the model while the environment names none', async ($, on) => {
+  const world = { ...feature(), effort: undefined }
+  world.settings = { effortLevel: 'high', modelSettings: { 'claude-opus-5-5': { effortLevel: 'xhigh' } } }
+  seat(on, world)
+  await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
+
+  const ui = await mountBand($)
+
+  expect(await painted(ui, 'Opus 5.5⁴')).toEqual(['yellow', false])
+  await ui.unmount()
+})
+
+test('keeps the effort it shows when the session starts again on a reload', async ($, on) => {
+  const world = { ...feature(), effort: undefined }
+  world.settings = { effortLevel: 'xhigh' }
+  seat(on, world)
+  on('turn.step', async function* ($, e) {
+    return { turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason: 'end_turn' as const, usage: null }
+  })
+  await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
+  const ui = await mountBand($)
+  await drain($.turn.step({ turnId: 't1', index: 0, model: 'claude-opus-5-5', effort: 'medium', messageCount: 1 }))
+
+  await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
+
+  expect(await painted(ui, 'Opus 5.5²')).toEqual(['yellow', false])
+  await ui.unmount()
+})
+
 test('leaves out the git part outside a repository and the plan path without plans', async ($, on) => {
   const world = feature()
   world.git = {}
@@ -496,7 +539,7 @@ test('leaves out the git part outside a repository and the plan path without pla
   const ui = await mountBand($)
 
   expect(await ui.find({ type: 'Text', text: exactly('at 51k/1m in ~/notes using Opus 5.5⁴ planned') })).toBeDefined()
-  expect(await painted(ui, '~/')).toEqual(['yellow', true])
+  expect(await painted(ui, '~/')).toEqual(['#927846', false])
   expect(await painted(ui, 'notes')).toEqual(['yellow', false])
   await ui.unmount()
 })

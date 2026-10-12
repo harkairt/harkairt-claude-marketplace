@@ -3,7 +3,16 @@ import type { EngineInterface, Register, RenderElement, SessionRateLimit, Timer 
 
 import type { GitLine, Limit, Usage, Workspace } from '../types'
 
-import { commitsMark, gitMarkers, joinMarkers, resetLabel, shortenCwd, tildify, wholePercent } from './format'
+import {
+  commitsMark,
+  gitMarkers,
+  joinMarkers,
+  resetLabel,
+  settingsEffort,
+  shortenCwd,
+  tildify,
+  wholePercent,
+} from './format'
 import type { Hue } from './format'
 import { firstLine, secondLine } from './line'
 import type { Segment } from './line'
@@ -18,6 +27,15 @@ const COLORS: Readonly<Record<Hue, string>> = {
   yellow: 'yellow',
   orange: '#ff8700',
   gray: '#585858',
+}
+// The terminal draws dimColor as the theme gray and drops color: the script's dim shades as precomputed hex.
+const DIM_COLORS: Readonly<Record<Hue, string>> = {
+  white: '#767676',
+  red: '#8a4b4f',
+  green: '#6f8652',
+  yellow: '#927846',
+  orange: '#925613',
+  gray: '#3e3e3f',
 }
 
 const workspace = atom({ plugin: 'statusline-band', key: 'workspace' } as const, null)
@@ -137,6 +155,22 @@ async function refreshModel($: EngineInterface, effort: string | undefined) {
   }
 }
 
+async function startEffort($: EngineInterface): Promise<string | undefined> {
+  const fromEnv = await $.env.get('CLAUDE_EFFORT')
+  if (fromEnv !== undefined) {
+    return fromEnv
+  }
+
+  const shown = await read($, model)
+  if (shown?.effort !== undefined) {
+    return shown.effort
+  }
+
+  const settings = await $.settings.read().catch(() => ({}))
+
+  return settingsEffort(settings, await $.session.model())
+}
+
 async function refreshAll($: EngineInterface) {
   const shown = await read($, model)
   await Promise.all([refreshWorkspace($), refreshUsage($), refreshModel($, shown?.effort)])
@@ -152,17 +186,18 @@ function isPlain(segment: Segment): boolean {
 }
 
 function style(segment: Segment) {
-  return {
-    ...(segment.color === undefined ? {} : { color: COLORS[segment.color] }),
-    ...(segment.isDim === undefined ? {} : { dimColor: true }),
+  if (segment.color === undefined) {
+    return segment.isDim === undefined ? {} : { dimColor: true }
   }
+
+  return { color: segment.isDim === undefined ? COLORS[segment.color] : DIM_COLORS[segment.color] }
 }
 
 export const register: Register = on => {
   let poll: Timer | undefined
 
   on('session.start', async ($, e, next) => {
-    const effort = await $.env.get('CLAUDE_EFFORT')
+    const effort = await startEffort($)
     await Promise.all([refreshWorkspace($), refreshUsage($), refreshModel($, effort)])
     poll?.cancel()
     poll = $.clock.every(REFRESH_MS, () => void refreshAll($))

@@ -8,6 +8,7 @@ import {
   modelName,
   orbBar,
   resetLabel,
+  settingsEffort,
   shortenCwd,
   splitDir,
   tildify,
@@ -140,6 +141,29 @@ test('marks the effort level low to max with a superscript 1 to 5', () => {
   expect(effortMark('max')).toBe('⁵')
   expect(effortMark(undefined)).toBe('')
   expect(effortMark('turbo')).toBe('')
+})
+
+test('reads the effort set for the model from the settings, else the effort set for all models', () => {
+  const settings = { effortLevel: 'high', modelSettings: { 'claude-opus-5-5': { effortLevel: 'xhigh' } } }
+
+  expect(settingsEffort(settings, 'claude-opus-5-5')).toBe('xhigh')
+  expect(settingsEffort(settings, 'claude-haiku-5-5')).toBe('high')
+  expect(settingsEffort({}, 'claude-opus-5-5')).toBeUndefined()
+})
+
+test('finds the model settings of a model id with a context suffix by the id with or without it', () => {
+  const plain = { effortLevel: 'high', modelSettings: { 'claude-opus-5-5': { effortLevel: 'xhigh' } } }
+  const suffixed = { effortLevel: 'high', modelSettings: { 'claude-opus-5-5[1m]': { effortLevel: 'max' } } }
+
+  expect(settingsEffort(plain, 'claude-opus-5-5[1m]')).toBe('xhigh')
+  expect(settingsEffort(suffixed, 'claude-opus-5-5[1m]')).toBe('max')
+})
+
+test('ignores an effort in the settings that is not a string', () => {
+  const settings = { effortLevel: 'low', modelSettings: { 'claude-opus-5-5': { effortLevel: 3 } } }
+
+  expect(settingsEffort(settings, 'claude-opus-5-5')).toBe('low')
+  expect(settingsEffort({ effortLevel: null, modelSettings: 'xhigh' }, 'claude-opus-5-5')).toBeUndefined()
 })
 
 test('names a model by its family and version', () => {
