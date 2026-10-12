@@ -2,11 +2,21 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 import type { FsEntry, FsStat, On, ProcessRunResult, SessionContextBreakdown, SessionUsage } from 'claude-code'
 
-const PLUGIN = 'statusline-footer'
+const PLUGIN = 'statusline-band'
 const HOME = '/Users/me'
 const PLANS = `${HOME}/.claude/plans`
+const SURFACES = ['terminal', 'desktop'] as const
 const ENGINE_HINT = '? for shortcuts'
 const HINT_PROPS = { isDraft: false, isWorking: false, hint: ENGINE_HINT }
+const ENGINE_BAND = { type: 'engine' as const, ref: 0 }
+const BAND_PROPS = {
+  hasSurvey: false,
+  isWorking: false,
+  maxRows: 10,
+  bodyColumns: 80,
+  scroll: { offset: 0, bodyRows: 10 },
+  view: {},
+}
 const NOW = new Date(2026, 9, 12, 10, 0).getTime()
 const LINE_1 =
   'at 51k/1m in ~/repos/app/src on origin/feature ⎇ 2 ~1?1 using Opus 5.5⁴ planned ~/dotfiles/claude/plans/new.md'
@@ -95,6 +105,7 @@ function seat(on: On, world: World) {
   })
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('ui.render', { component: 'PromptHint' }, () => ({ type: 'Text', children: [ENGINE_HINT] }))
+  on('ui.render', { component: 'AbovePrompt' }, () => ENGINE_BAND)
 
   return mock.clock(on, { now: NOW })
 }
@@ -103,11 +114,11 @@ function exactly(text: string): RegExp {
   return new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}$`)
 }
 
-function mountHint($: Engine, surface: 'terminal' | 'desktop' = 'terminal') {
-  return $.ui.mount({ plugin: PLUGIN, surface, component: 'PromptHint', props: HINT_PROPS })
+function mountBand($: Engine, surface: 'terminal' | 'desktop' = 'terminal', props = BAND_PROPS) {
+  return $.ui.mount({ plugin: PLUGIN, surface, component: 'AbovePrompt', props })
 }
 
-type Drawing = Awaited<ReturnType<typeof mountHint>>
+type Drawing = Awaited<ReturnType<typeof mountBand>>
 
 async function painted(ui: Drawing, text: string): Promise<[unknown, boolean]> {
   const found = await ui.find({ type: 'Text', text: exactly(text) })
@@ -122,27 +133,80 @@ async function rowCount(ui: Drawing): Promise<number> {
   return 'children' in drawn ? (drawn.children?.length ?? 0) : 0
 }
 
-test('draws the status line in place of the engine hint on the terminal', async ($, on) => {
+test('draws the status line in the band above the prompt on the terminal', async ($, on) => {
   const world = feature()
   seat(on, world)
   await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
 
-  const ui = await mountHint($)
+  const ui = await mountBand($)
 
   expect((await ui.drawn()).type).toBe('Box')
   expect(await rowCount(ui)).toBe(2)
   expect(await ui.find({ type: 'Text', text: exactly(LINE_1) })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: exactly(LINE_2) })).toBeDefined()
-  expect(await ui.find({ text: ENGINE_HINT })).toBeUndefined()
   await ui.unmount()
 })
+
+test('leaves the hint line under the prompt to the engine on every surface', async ($, on) => {
+  const world = feature()
+  seat(on, world)
+  await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
+
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({ plugin: PLUGIN, surface, component: 'PromptHint', props: HINT_PROPS })
+
+    expect(await ui.find({ type: 'Text', text: exactly(ENGINE_HINT) })).toBeDefined()
+    expect(await ui.find({ text: /using/ })).toBeUndefined()
+    await ui.unmount()
+  }
+})
+
+test('leaves the band to a survey while one holds it', async ($, on) => {
+  const world = feature()
+  seat(on, world)
+  await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
+
+  const ui = await mountBand($, 'terminal', { ...BAND_PROPS, hasSurvey: true })
+
+  expect(await ui.drawn()).toEqual(ENGINE_BAND)
+  await ui.unmount()
+})
+
+test(
+  'keeps the band another plugin draws beneath, its own rows last',
+  {
+    plugins: [
+      {
+        name: 'other-band',
+        tier: 'append',
+        register(on) {
+          on('ui.render', { component: 'AbovePrompt' }, () => ({ type: 'Text', props: {}, children: ['other band'] }))
+        },
+      },
+    ],
+  },
+  async ($, on) => {
+    const world = feature()
+    seat(on, world)
+    await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
+
+    const ui = await mountBand($)
+
+    const drawn = await ui.drawn()
+    expect(await rowCount(ui)).toBe(3)
+    expect('children' in drawn && drawn.children?.[0]).toEqual({ type: 'Text', props: {}, children: ['other band'] })
+    expect(await ui.find({ type: 'Text', text: exactly(LINE_1) })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: exactly(LINE_2) })).toBeDefined()
+    await ui.unmount()
+  },
+)
 
 test('paints line 1 with the colors and dim parts of the script', async ($, on) => {
   const world = feature()
   seat(on, world)
   await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
 
-  const ui = await mountHint($)
+  const ui = await mountBand($)
 
   expect(await painted(ui, 'at')).toEqual([undefined, true])
   expect(await painted(ui, '51k')).toEqual(['yellow', false])
@@ -166,7 +230,7 @@ test('paints line 2 with the colors and dim parts of the script', async ($, on) 
   seat(on, world)
   await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
 
-  const ui = await mountHint($)
+  const ui = await mountBand($)
 
   expect(await painted(ui, 'current(')).toEqual([undefined, true])
   expect(await painted(ui, '14:05')).toEqual(['white', false])
@@ -196,7 +260,7 @@ test('paints the 256-color orange of the script as its hex', async ($, on) => {
   seat(on, world)
   await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
 
-  const ui = await mountHint($)
+  const ui = await mountBand($)
 
   expect(await painted(ui, '110k')).toEqual(['#ff8700', false])
   expect(await painted(ui, '/200k')).toEqual(['#585858', false])
@@ -206,15 +270,14 @@ test('paints the 256-color orange of the script as its hex', async ($, on) => {
   await ui.unmount()
 })
 
-test('leaves the hint line to the engine on the desktop', async ($, on) => {
+test('leaves the band to the engine on the desktop', async ($, on) => {
   const world = feature()
   seat(on, world)
   await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
 
-  const ui = await mountHint($, 'desktop')
+  const ui = await mountBand($, 'desktop')
 
-  expect(await ui.find({ text: ENGINE_HINT })).toBeDefined()
-  expect(await ui.find({ text: /using/ })).toBeUndefined()
+  expect(await ui.drawn()).toEqual(ENGINE_BAND)
   await ui.unmount()
 })
 
@@ -224,7 +287,7 @@ test('draws line 1 alone while no rate-limit window has a reading', async ($, on
   seat(on, world)
   await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
 
-  const ui = await mountHint($)
+  const ui = await mountBand($)
 
   expect(await rowCount(ui)).toBe(1)
   expect(await ui.find({ type: 'Text', text: exactly(LINE_1) })).toBeDefined()
@@ -238,7 +301,7 @@ test('draws no quote line, even with a quotes file in place', async ($, on) => {
   on('fs.read', () => ({ value: 'The obstacle is the way. – Marcus Aurelius\n' }))
   await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
 
-  const ui = await mountHint($)
+  const ui = await mountBand($)
 
   expect(await rowCount(ui)).toBe(2)
   expect(await ui.find({ text: /Marcus Aurelius|–/ })).toBeUndefined()
@@ -249,7 +312,7 @@ test('follows a git or plan change on the minute timer', async ($, on) => {
   const world = feature()
   const clock = seat(on, world)
   await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
-  const ui = await mountHint($)
+  const ui = await mountBand($)
   world.git['git status --porcelain=v1 --branch'] = '## feature...origin/feature [ahead 1]\nM  a.ts\n'
   world.git['git rev-parse HEAD'] = 'beef\n'
   world.plans.push({ name: 'newer.md', mtimeMs: 5000, realPath: `${HOME}/.claude/plans/newer.md` })
@@ -290,7 +353,7 @@ test('shows the weekly reset as HH:MM once it is a day away or less', async ($, 
   }
   const clock = seat(on, world)
   await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
-  const ui = await mountHint($)
+  const ui = await mountBand($)
 
   expect(await ui.find({ type: 'Text', text: /weekly\(oct 13\)/ })).toBeDefined()
 
@@ -305,7 +368,7 @@ test('follows a change a tool made as soon as the call returns', async ($, on) =
   const clock = seat(on, world)
   on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: '', stderr: '', interrupted: false } }))
   await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
-  const ui = await mountHint($)
+  const ui = await mountBand($)
   world.git['git status --porcelain=v1 --branch'] = '## feature...origin/feature\nA  c.ts\n'
 
   await $.tool.call({ tool: 'Bash', command: 'git add c.ts' })
@@ -323,7 +386,7 @@ test('reads nothing again after a read-only tool call', async ($, on) => {
     isReadOnly: true as const,
   }))
   await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
-  const ui = await mountHint($)
+  const ui = await mountBand($)
   world.git['git status --porcelain=v1 --branch'] = '## feature...origin/feature\nA  c.ts\n'
 
   await $.tool.call({ tool: 'Bash', command: 'ls' })
@@ -338,7 +401,7 @@ test('follows a change once a turn completes', async ($, on) => {
   const clock = seat(on, world)
   on('turn.complete', () => ({ text: '' }))
   await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
-  const ui = await mountHint($)
+  const ui = await mountBand($)
   world.git['git branch --show-current'] = 'main\n'
   world.git['git rev-parse --abbrev-ref @{u}'] = 'origin/main\n'
   world.git['git status --porcelain=v1 --branch'] = '## main...origin/main\n'
@@ -355,7 +418,7 @@ test('follows the context fill and the limits once the session is measured', asy
   seat(on, world)
   on('session.measure', ($, e) => ({ changed: e.changed }))
   await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
-  const ui = await mountHint($)
+  const ui = await mountBand($)
   const rateLimits = [
     { kind: 'five_hour', percentUsed: 92, resetsAt: new Date(2026, 9, 12, 14, 5).toISOString() },
     { kind: 'seven_day', percentUsed: 23.5, resetsAt: new Date(2026, 9, 14, 7, 0).toISOString() },
@@ -393,7 +456,7 @@ test('marks the effort the last main-loop request asked for', async ($, on) => {
     return { turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason: 'end_turn' as const, usage: null }
   })
   await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
-  const ui = await mountHint($)
+  const ui = await mountBand($)
 
   await drain($.turn.step({ turnId: 't1', index: 0, model: 'claude-opus-5-5', effort: 'medium', messageCount: 1 }))
 
@@ -414,7 +477,7 @@ test('drops the effort mark for a request that names no effort', async ($, on) =
     return { turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason: 'end_turn' as const, usage: null }
   })
   await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
-  const ui = await mountHint($)
+  const ui = await mountBand($)
 
   await drain($.turn.step({ turnId: 't1', index: 0, model: 'claude-opus-5-5', messageCount: 1 }))
 
@@ -430,7 +493,7 @@ test('leaves out the git part outside a repository and the plan path without pla
   seat(on, world)
   await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
 
-  const ui = await mountHint($)
+  const ui = await mountBand($)
 
   expect(await ui.find({ type: 'Text', text: exactly('at 51k/1m in ~/notes using Opus 5.5⁴ planned') })).toBeDefined()
   expect(await painted(ui, '~/')).toEqual(['yellow', true])
@@ -449,7 +512,7 @@ for (const trunk of ['main', 'master', 'develop']) {
     seat(on, world)
     await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
 
-    const ui = await mountHint($)
+    const ui = await mountBand($)
 
     expect(await ui.find({ type: 'Text', text: new RegExp(`on ${trunk} \\?1 using`) })).toBeDefined()
     await ui.unmount()
@@ -459,9 +522,9 @@ for (const trunk of ['main', 'master', 'develop']) {
 test('draws the token part of line 1 before anything is read', async ($, on) => {
   seat(on, feature())
 
-  const ui = await mountHint($)
+  const ui = await mountBand($)
 
   expect(await ui.find({ type: 'Text', text: exactly('at 0k/200k') })).toBeDefined()
-  expect(await ui.find({ text: ENGINE_HINT })).toBeUndefined()
+  expect(await rowCount(ui)).toBe(1)
   await ui.unmount()
 })

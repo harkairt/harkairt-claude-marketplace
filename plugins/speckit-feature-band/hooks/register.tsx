@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register, Timer } from 'claude-code'
+import type { EngineInterface, Register, RenderElement, Timer } from 'claude-code'
 
 import type { FeatureLine } from '../types'
 
@@ -46,6 +46,11 @@ async function readFeature($: EngineInterface): Promise<string> {
   }
 }
 
+// The engine draws only surveys in this band, so with no survey its own drawing beneath is empty.
+function isEngineBand(tree: RenderElement): boolean {
+  return tree.type === 'engine'
+}
+
 async function refresh($: EngineInterface) {
   const fresh = toLines(await readFeature($))
   const shown = await read($, lines)
@@ -75,10 +80,12 @@ export const register: Register = on => {
       return next(e)
     }
 
+    const beneath = await next(e)
     const { Box, Text } = $.ui.resolve(e)
 
     return (
       <Box flexDirection="column">
+        {!isEngineBand(beneath) && beneath}
         {shown.map(line => (
           <Text>
             {line.key !== undefined && <Text dimColor>{line.key}: </Text>}

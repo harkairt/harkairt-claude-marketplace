@@ -1,11 +1,11 @@
 import { expect, mock, test } from 'claude-code/testing'
-import type { On } from 'claude-code'
+import type { On, RenderElement } from 'claude-code'
 
 const PLUGIN = 'speckit-feature-band'
 const ROOT = '/repo'
 const FEATURE_JSON = `${ROOT}/.specify/feature.json`
 const SURFACES = ['terminal', 'desktop'] as const
-const ENGINE_BAND = 'engine band'
+const ENGINE_BAND = { type: 'engine' as const, ref: 0 }
 const BAND_PROPS = {
   hasSurvey: false,
   isWorking: false,
@@ -25,12 +25,28 @@ function project(on: On, files: Record<string, string>, root = () => ROOT) {
       : { value: text }
   })
   on('session.start', ($, e) => ({ cwd: e.cwd }))
-  on('ui.render', { component: 'AbovePrompt' }, () => ({
-    type: 'Text',
-    children: [ENGINE_BAND],
-  }))
+  on('ui.render', { component: 'AbovePrompt' }, () => ENGINE_BAND)
 
   return mock.clock(on)
+}
+
+const OTHER_BAND = { type: 'Text', props: {}, children: ['other band'] }
+const WITH_OTHER_BAND = {
+  plugins: [
+    {
+      name: 'other-band',
+      tier: 'append' as const,
+      register(on: On) {
+        on('ui.render', { component: 'AbovePrompt' }, () => ({ type: 'Text', props: {}, children: ['other band'] }))
+      },
+    },
+  ],
+}
+
+async function rowCount(ui: { drawn: () => Promise<RenderElement> }): Promise<number> {
+  const drawn = await ui.drawn()
+
+  return 'children' in drawn ? (drawn.children?.length ?? 0) : 0
 }
 
 test('shows each field of feature.json as key: value', async ($, on) => {
@@ -49,7 +65,7 @@ test('shows each field of feature.json as key: value', async ($, on) => {
     const key = await ui.find({ type: 'Text', text: /^feature_directory: $/ })
     expect(row).toBeDefined()
     expect(key?.props.dimColor).toBe(true)
-    expect(await ui.find({ text: ENGINE_BAND })).toBeUndefined()
+    expect(await rowCount(ui)).toBe(1)
     await ui.unmount()
   }
 })
@@ -124,7 +140,7 @@ test('leaves the band to the survey while one holds it', async ($, on) => {
       props: { ...BAND_PROPS, hasSurvey: true },
     })
 
-    expect(await ui.find({ text: ENGINE_BAND })).toBeDefined()
+    expect(await ui.drawn()).toEqual(ENGINE_BAND)
     expect(await ui.find({ text: 'specs/010-x' })).toBeUndefined()
     await ui.unmount()
   }
@@ -210,7 +226,7 @@ test('gives the band back to the engine once feature.json is removed', async ($,
       props: BAND_PROPS,
     })
 
-    expect(await ui.find({ text: ENGINE_BAND })).toBeDefined()
+    expect(await ui.drawn()).toEqual(ENGINE_BAND)
     await ui.unmount()
   }
 })
@@ -253,7 +269,7 @@ test('leaves the band to the engine when feature.json is missing', async ($, on)
       props: BAND_PROPS,
     })
 
-    expect(await ui.find({ text: ENGINE_BAND })).toBeDefined()
+    expect(await ui.drawn()).toEqual(ENGINE_BAND)
     await ui.unmount()
   }
 })
@@ -270,7 +286,44 @@ test('leaves the band to the engine when feature.json is blank', async ($, on) =
       props: BAND_PROPS,
     })
 
-    expect(await ui.find({ text: ENGINE_BAND })).toBeDefined()
+    expect(await ui.drawn()).toEqual(ENGINE_BAND)
+    await ui.unmount()
+  }
+})
+
+test('keeps the band another plugin draws beneath, its own lines after it', WITH_OTHER_BAND, async ($, on) => {
+  project(on, { [FEATURE_JSON]: '{"feature_directory":"specs/010-x"}' })
+  await $.session.start({ cwd: ROOT, surface: 'terminal', isInteractive: true })
+
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({
+      plugin: PLUGIN,
+      surface,
+      component: 'AbovePrompt',
+      props: BAND_PROPS,
+    })
+
+    const drawn = await ui.drawn()
+    expect(await rowCount(ui)).toBe(2)
+    expect('children' in drawn && drawn.children?.[0]).toEqual(OTHER_BAND)
+    expect(await ui.find({ type: 'Text', text: 'feature_directory: specs/010-x' })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+test('hands the band beneath on unchanged with nothing of its own to show', WITH_OTHER_BAND, async ($, on) => {
+  project(on, {})
+  await $.session.start({ cwd: ROOT, surface: 'terminal', isInteractive: true })
+
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({
+      plugin: PLUGIN,
+      surface,
+      component: 'AbovePrompt',
+      props: BAND_PROPS,
+    })
+
+    expect(await ui.drawn()).toEqual(OTHER_BAND)
     await ui.unmount()
   }
 })

@@ -6,7 +6,7 @@ export type Model = { id: string; effort?: string }
 
 declare module 'claude-code' {
   interface PluginState {
-    'statusline-footer': {
+    'statusline-band': {
       workspace: Workspace | null
       usage: Usage | null
       model: Model | null

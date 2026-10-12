@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register, SessionRateLimit, Timer } from 'claude-code'
+import type { EngineInterface, Register, RenderElement, SessionRateLimit, Timer } from 'claude-code'
 
 import type { GitLine, Limit, Usage, Workspace } from '../types'
 
@@ -20,9 +20,9 @@ const COLORS: Readonly<Record<Hue, string>> = {
   gray: '#585858',
 }
 
-const workspace = atom({ plugin: 'statusline-footer', key: 'workspace' } as const, null)
-const usage = atom({ plugin: 'statusline-footer', key: 'usage' } as const, null)
-const model = atom({ plugin: 'statusline-footer', key: 'model' } as const, null)
+const workspace = atom({ plugin: 'statusline-band', key: 'workspace' } as const, null)
+const usage = atom({ plugin: 'statusline-band', key: 'usage' } as const, null)
+const model = atom({ plugin: 'statusline-band', key: 'model' } as const, null)
 
 function isSame(fresh: unknown, shown: unknown): boolean {
   return JSON.stringify(fresh) === JSON.stringify(shown)
@@ -142,6 +142,11 @@ async function refreshAll($: EngineInterface) {
   await Promise.all([refreshWorkspace($), refreshUsage($), refreshModel($, shown?.effort)])
 }
 
+// The engine draws only surveys in this band, so with no survey its own drawing beneath is empty.
+function isEngineBand(tree: RenderElement): boolean {
+  return tree.type === 'engine'
+}
+
 function isPlain(segment: Segment): boolean {
   return segment.color === undefined && segment.isDim === undefined
 }
@@ -194,8 +199,8 @@ export const register: Register = on => {
     return yield* next(e)
   })
 
-  on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
-    if (e.surface !== 'terminal') {
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (e.surface !== 'terminal' || e.props.hasSurvey) {
       return next(e)
     }
 
@@ -207,10 +212,12 @@ export const register: Register = on => {
     const first = firstLine(shownUsage, shownWorkspace, shownModel)
     const second = secondLine(shownUsage)
     const rows = second === undefined ? [first] : [first, second]
+    const beneath = await next(e)
     const { Box, Text } = $.ui.resolve(e)
 
     return (
       <Box flexDirection="column">
+        {!isEngineBand(beneath) && beneath}
         {rows.map(row => (
           <Text>
             {row
