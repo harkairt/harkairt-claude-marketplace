@@ -4,9 +4,11 @@ import type { EngineInterface, Register, RenderElement, SessionRateLimit, Timer 
 import type { GitLine, Limit, Usage, Workspace } from '../types'
 
 import {
+  cacheTtlMs,
   commitsMark,
   gitMarkers,
   joinMarkers,
+  minutesLeft,
   resetLabel,
   settingsEffort,
   shortenCwd,
@@ -41,6 +43,7 @@ const DIM_COLORS: Readonly<Record<Hue, string>> = {
 const workspace = atom({ plugin: 'statusline-band', key: 'workspace' } as const, null)
 const usage = atom({ plugin: 'statusline-band', key: 'usage' } as const, null)
 const model = atom({ plugin: 'statusline-band', key: 'model' } as const, null)
+const respondedAt = atom({ plugin: 'statusline-band', key: 'respondedAt' } as const, null)
 
 function isSame(fresh: unknown, shown: unknown): boolean {
   return JSON.stringify(fresh) === JSON.stringify(shown)
@@ -117,6 +120,11 @@ function limitOf(rateLimits: readonly SessionRateLimit[], kind: string, now: num
 async function readUsage($: EngineInterface): Promise<Usage> {
   const { context, rateLimits } = await $.session.usage({ breakdown: 'summary' })
   const now = await $.clock.now()
+  const responded = await read($, respondedAt)
+  const cacheMinutes =
+    responded === null
+      ? undefined
+      : minutesLeft(responded + cacheTtlMs(rateLimits.map(limit => limit.percentUsed)), now)
   const last = context.breakdown?.apiUsage
   const tokens = last
     ? last.input_tokens + last.output_tokens + last.cache_read_input_tokens + last.cache_creation_input_tokens
@@ -130,6 +138,7 @@ async function readUsage($: EngineInterface): Promise<Usage> {
   return {
     ...(tokens === undefined ? {} : { tokens }),
     window: context.window,
+    ...(cacheMinutes === undefined ? {} : { cacheMinutes }),
     ...(hasReading ? { limits } : {}),
   }
 }
@@ -227,11 +236,19 @@ export const register: Register = on => {
   })
 
   on('turn.step', async function* ($, e, next) {
-    if (e.agentId === undefined) {
-      await refreshModel($, typeof e.effort === 'string' ? e.effort : undefined)
+    if (e.agentId !== undefined) {
+      return yield* next(e)
     }
 
-    return yield* next(e)
+    await refreshModel($, typeof e.effort === 'string' ? e.effort : undefined)
+    const result = yield* next(e)
+    if (result.stopReason !== null) {
+      const now = await $.clock.now()
+      await update($, respondedAt, () => now)
+      await refreshUsage($)
+    }
+
+    return result
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {

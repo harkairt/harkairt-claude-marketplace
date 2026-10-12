@@ -1,10 +1,12 @@
 import { expect, test } from 'claude-code/testing'
 
 import {
+  cacheTtlMs,
   commitsMark,
   effortMark,
   gitMarkers,
   joinMarkers,
+  minutesLeft,
   modelName,
   orbBar,
   resetLabel,
@@ -204,6 +206,33 @@ test('shows a dated reset within 24 hours as HH:MM', () => {
 test('shows nothing for a reset time that is missing or does not parse', () => {
   expect(resetLabel(undefined, 0)).toBe('')
   expect(resetLabel('soon', 0, true)).toBe('')
+})
+
+test('counts the minutes left before an expiry, a started minute as a whole one', () => {
+  const now = new Date(2026, 9, 12, 10, 0).getTime()
+
+  expect(minutesLeft(now + 60 * 60_000, now)).toBe(60)
+  expect(minutesLeft(now + 60_001, now)).toBe(2)
+  expect(minutesLeft(now + 60_000, now)).toBe(1)
+  expect(minutesLeft(now + 1, now)).toBe(1)
+})
+
+test('counts no minutes for an expiry that is now or past', () => {
+  const now = new Date(2026, 9, 12, 10, 0).getTime()
+
+  expect(minutesLeft(now, now)).toBeUndefined()
+  expect(minutesLeft(now - 60_000, now)).toBeUndefined()
+})
+
+test('keeps the prompt cache an hour while every rate limit is under 100 percent', () => {
+  expect(cacheTtlMs([])).toBe(3_600_000)
+  expect(cacheTtlMs([41, 23.5])).toBe(3_600_000)
+  expect(cacheTtlMs([99.9])).toBe(3_600_000)
+})
+
+test('keeps the prompt cache 5 minutes in usage overage, a rate limit at 100 percent or more', () => {
+  expect(cacheTtlMs([41, 100])).toBe(300_000)
+  expect(cacheTtlMs([120])).toBe(300_000)
 })
 
 test('splits a path into the part up to its last slash and the name after it', () => {

@@ -61,6 +61,7 @@ export function firstLine(usage: Usage | null, workspace: Workspace | null, mode
     SPACE,
     paint(tokens.text, tokens.color),
     paint(windowLabel(usage?.window ?? 0), 'gray'),
+    ...(usage?.cacheMinutes === undefined ? [] : [dim(` (${usage.cacheMinutes}m)`, 'yellow')]),
     ...(workspace === null ? [] : workspacePart(workspace)),
     ...(model === null ? [] : modelPart(model)),
     ...(workspace === null ? [] : planPart(workspace)),

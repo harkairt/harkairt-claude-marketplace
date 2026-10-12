@@ -162,6 +162,16 @@ export function resetLabel(resetsAt: string | undefined, now: number, isDated = 
     : `${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}`
 }
 
+const MINUTE_MS = 60_000
+
+export function cacheTtlMs(percentsUsed: readonly number[]): number {
+  return percentsUsed.some(percent => percent >= 100) ? 5 * MINUTE_MS : 60 * MINUTE_MS
+}
+
+export function minutesLeft(expiresAt: number, now: number): number | undefined {
+  return expiresAt > now ? Math.ceil((expiresAt - now) / MINUTE_MS) : undefined
+}
+
 export function splitDir(path: string): { parent: string; name: string } {
   const cut = path.lastIndexOf('/') + 1
 

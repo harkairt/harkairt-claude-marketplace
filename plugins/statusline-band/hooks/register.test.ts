@@ -528,6 +528,119 @@ test('keeps the effort it shows when the session starts again on a reload', asyn
   await ui.unmount()
 })
 
+const MAIN_STEP = { turnId: 't1', index: 0, model: 'claude-opus-5-5', effort: 'xhigh' as const, messageCount: 1 }
+const CACHE_TIMER = /\(\d+m\)/
+
+function answerSteps(on: On, stopReason: 'end_turn' | null = 'end_turn') {
+  on('turn.step', async function* ($, e) {
+    return { turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason, usage: null }
+  })
+}
+
+test('shows the prompt cache timer in dim yellow right after the window once the main loop has a response', async ($, on) => {
+  const world = feature()
+  world.usage = { ...world.usage, context: { ...world.usage.context, window: 200_000 } }
+  seat(on, world)
+  answerSteps(on)
+  await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
+  const ui = await mountBand($)
+
+  await drain($.turn.step(MAIN_STEP))
+
+  expect(await painted(ui, ' (60m)')).toEqual(['#927846', false])
+  expect(await ui.find({ type: 'Text', text: /^at 51k\/200k \(60m\) in ~\/repos\/app\/src on / })).toBeDefined()
+  await ui.unmount()
+})
+
+test('shows no prompt cache timer before the first main-loop response', async ($, on) => {
+  const world = feature()
+  const clock = seat(on, world)
+  await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
+  const ui = await mountBand($)
+
+  await clock.advance(60_000)
+
+  expect(await ui.find({ text: CACHE_TIMER })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('counts the prompt cache timer down on the minute timer and drops it once the cache expired', async ($, on) => {
+  const world = feature()
+  const clock = seat(on, world)
+  answerSteps(on)
+  await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
+  const ui = await mountBand($)
+  await drain($.turn.step(MAIN_STEP))
+
+  await clock.advance(59 * 60_000)
+
+  expect(await painted(ui, ' (1m)')).toEqual(['#927846', false])
+
+  await clock.advance(60_000)
+
+  expect(await ui.find({ text: CACHE_TIMER })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: exactly(LINE_1) })).toBeDefined()
+  await ui.unmount()
+})
+
+test('shows 5 minutes on the prompt cache timer in usage overage', async ($, on) => {
+  const world = feature()
+  world.usage = { ...world.usage, rateLimits: [{ kind: 'seven_day', percentUsed: 100 }] }
+  seat(on, world)
+  answerSteps(on)
+  await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
+  const ui = await mountBand($)
+
+  await drain($.turn.step(MAIN_STEP))
+
+  expect(await painted(ui, ' (5m)')).toEqual(['#927846', false])
+  await ui.unmount()
+})
+
+test('keeps the prompt cache timer counting when the session starts again on a reload', async ($, on) => {
+  const world = feature()
+  const clock = seat(on, world)
+  answerSteps(on)
+  await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
+  const ui = await mountBand($)
+  await drain($.turn.step(MAIN_STEP))
+
+  await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
+
+  expect(await painted(ui, ' (60m)')).toEqual(['#927846', false])
+
+  await clock.advance(30 * 60_000)
+
+  expect(await painted(ui, ' (30m)')).toEqual(['#927846', false])
+  await ui.unmount()
+})
+
+test('starts no prompt cache timer on a subagent response', async ($, on) => {
+  const world = feature()
+  seat(on, world)
+  answerSteps(on)
+  await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
+  const ui = await mountBand($)
+
+  await drain($.turn.step({ ...MAIN_STEP, agentId: 'a1' }))
+
+  expect(await ui.find({ text: CACHE_TIMER })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('starts no prompt cache timer on a main-loop step that got no response', async ($, on) => {
+  const world = feature()
+  seat(on, world)
+  answerSteps(on, null)
+  await $.session.start({ cwd: world.cwd, surface: 'terminal', isInteractive: true })
+  const ui = await mountBand($)
+
+  await drain($.turn.step(MAIN_STEP))
+
+  expect(await ui.find({ text: CACHE_TIMER })).toBeUndefined()
+  await ui.unmount()
+})
+
 test('leaves out the git part outside a repository and the plan path without plans', async ($, on) => {
   const world = feature()
   world.git = {}
