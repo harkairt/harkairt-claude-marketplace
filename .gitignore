@@ -1,3 +1,3 @@
 plugins/caffeinate-claude/hooks/brightness
 plugins/*/.claude-plugin/types/
-plugins/speckit-feature-band/tsconfig.json
+plugins/*/tsconfig.json

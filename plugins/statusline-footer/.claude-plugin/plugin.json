@@ -1,0 +1,6 @@
+{
+  "name": "statusline-footer",
+  "version": "0.1.0",
+  "description": "Shows the status line (context, cwd, git, model, plan, usage limits) under the prompt in the terminal.",
+  "types": "./types/index.d.ts"
+}

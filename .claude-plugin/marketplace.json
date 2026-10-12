@@ -3,7 +3,7 @@
   "owner": {
     "name": "harkairt"
   },
-  "version": "1.0.16",
+  "version": "1.0.17",
   "plugins": [
     {
       "name": "print-hook-inputs",
@@ -54,6 +54,11 @@
       "name": "speckit-feature-band",
       "source": "./plugins/speckit-feature-band",
       "description": "A mod that shows the content of .specify/feature.json in a band above the prompt (Claude Code terminal and Desktop Code tab)."
+    },
+    {
+      "name": "statusline-footer",
+      "source": "./plugins/statusline-footer",
+      "description": "A mod that shows the status line (context, cwd, git, model, plan, usage limits) under the prompt in the Claude Code terminal only."
     }
   ]
 }
