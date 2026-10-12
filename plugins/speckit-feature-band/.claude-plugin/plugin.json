@@ -1,0 +1,6 @@
+{
+  "name": "speckit-feature-band",
+  "version": "0.1.0",
+  "description": "Shows the content of .specify/feature.json in a band above the prompt.",
+  "types": "./types/index.d.ts"
+}
