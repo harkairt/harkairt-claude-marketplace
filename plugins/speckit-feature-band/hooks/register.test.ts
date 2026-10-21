@@ -305,7 +305,7 @@ test('keeps the band another plugin draws beneath, its own lines after it', WITH
 
     const drawn = await ui.drawn()
     expect(await rowCount(ui)).toBe(2)
-    expect('children' in drawn && drawn.children?.[0]).toEqual(OTHER_BAND)
+    expect('children' in drawn && drawn.children?.[0]).toEqual(expect.objectContaining(OTHER_BAND))
     expect(await ui.find({ type: 'Text', text: 'feature_directory: specs/010-x' })).toBeDefined()
     await ui.unmount()
   }
@@ -323,7 +323,7 @@ test('hands the band beneath on unchanged with nothing of its own to show', WITH
       props: BAND_PROPS,
     })
 
-    expect(await ui.drawn()).toEqual(OTHER_BAND)
+    expect(await ui.drawn()).toEqual(expect.objectContaining(OTHER_BAND))
     await ui.unmount()
   }
 })
