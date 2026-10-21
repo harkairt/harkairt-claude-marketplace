@@ -27,6 +27,7 @@ const PLAN_TEMPLATE_MARKERS = ['[FEATURE]', 'ACTION REQUIRED', '[REMOVE IF UNUSE
 const TASK_LINE = /^\s*- \[[ xX]\] T\d+/gm
 const OPEN_TASK_LINE = /^\s*- \[ \] T\d+/gm
 const SKILL_NAME = /^(?:[^:]+:)?speckit[-.:]?(specify|plan|tasks|implement)$/
+const FEATURE_ID = /^(?:\d+-)+/
 
 function fileStatus(text: string | undefined, templateMarkers: readonly string[]): PhaseStatus {
   if (text === undefined) {
@@ -66,6 +67,12 @@ export function phaseOfSkill(skill: string): Phase | undefined {
   const match = SKILL_NAME.exec(skill)
 
   return match === null ? undefined : (match[1] as Phase)
+}
+
+export function splitFeature(feature: string): { id: string; name: string } {
+  const id = FEATURE_ID.exec(feature)?.[0] ?? ''
+
+  return { id, name: feature.slice(id.length) }
 }
 
 export function isFinished(line: PhaseLine): boolean {

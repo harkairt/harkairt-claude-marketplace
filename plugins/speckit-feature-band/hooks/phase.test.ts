@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { detectPhases, formatPhaseLine, phaseOfSkill } from './phase'
+import { detectPhases, formatPhaseLine, phaseOfSkill, splitFeature } from './phase'
 import type { Detection } from './phase'
 
 const SPEC = '# Feature Specification: Sidebar\n\n## User Scenarios\n'
@@ -123,5 +123,23 @@ describe('formatPhaseLine', () => {
 
   test('shows the feature alone with nothing started', () => {
     expect(formatPhaseLine(NONE, null, '010-x')).toEqual({ feature: '010-x', parts: [] })
+  })
+})
+
+describe('splitFeature', () => {
+  test('splits a numbered folder name into its id and name', () => {
+    expect(splitFeature('004-x')).toEqual({ id: '004-', name: 'x' })
+  })
+
+  test('takes every leading digit group with its dash as the id', () => {
+    expect(splitFeature('20260917-110232-x-y')).toEqual({ id: '20260917-110232-', name: 'x-y' })
+  })
+
+  test('keeps a folder name without a number prefix whole', () => {
+    expect(splitFeature('sidebar')).toEqual({ id: '', name: 'sidebar' })
+  })
+
+  test('keeps a digits-only folder name as the name', () => {
+    expect(splitFeature('004')).toEqual({ id: '', name: '004' })
   })
 })

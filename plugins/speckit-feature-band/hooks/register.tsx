@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderElement, Timer } from 'claude-code'
 
 import type { Phase, PhaseLine } from '../types'
-import { detectPhases, formatPhaseLine, isFinished, phaseOfSkill } from './phase'
+import { detectPhases, formatPhaseLine, isFinished, phaseOfSkill, splitFeature } from './phase'
 
 const WRITING_TOOLS = /^(Write|Edit|MultiEdit|NotebookEdit|Bash)$/
 const POLL_MS = 60_000
@@ -128,6 +128,7 @@ export const register: Register = on => {
     const { Box, Text } = $.ui.resolve(e)
     const bright = isFinished(shown)
     const last = shown.parts.length - 1
+    const feature = splitFeature(shown.feature)
 
     return (
       <Box flexDirection="column">
@@ -139,7 +140,8 @@ export const register: Register = on => {
               {index < last ? ', ' : ' '}
             </Text>
           ))}
-          {`<${shown.feature}>`}
+          {feature.id !== '' && <Text dimColor>{feature.id}</Text>}
+          <Text>{feature.name}</Text>
         </Text>
       </Box>
     )
