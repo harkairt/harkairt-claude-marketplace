@@ -68,18 +68,29 @@ export function phaseOfSkill(skill: string): Phase | undefined {
   return match === null ? undefined : (match[1] as Phase)
 }
 
-export function formatPhaseLine(detection: Detection, live: Phase | null, feature: string): PhaseLine {
-  let part: PhasePart | null = null
+export function isFinished(line: PhaseLine): boolean {
+  return line.parts.length === 1 && line.parts[0]?.text === WORDS.implement.done
+}
 
+export function formatPhaseLine(detection: Detection, live: Phase | null, feature: string): PhaseLine {
+  if (detection.implement === 'done') {
+    return { feature, parts: [{ text: WORDS.implement.done, running: false }] }
+  }
+  if (detection.implement === 'running' || live === 'implement') {
+    const counter = detection.total > 0 ? ` (${detection.ticked}/${detection.total})` : ''
+
+    return { feature, parts: [{ text: `${WORDS.implement.running}${counter}`, running: true }] }
+  }
+
+  const parts: PhasePart[] = []
   for (const phase of PHASES) {
     const status = detection[phase]
     if (status === 'done') {
-      part = { text: WORDS[phase].done, running: false }
+      parts.push({ text: WORDS[phase].done, running: false })
     } else if (status === 'running' || live === phase) {
-      const counter = phase === 'implement' && detection.total > 0 ? ` ${detection.ticked}/${detection.total}` : ''
-      part = { text: `${WORDS[phase].running}${counter}`, running: true }
+      parts.push({ text: WORDS[phase].running, running: true })
     }
   }
 
-  return { feature, part }
+  return { feature, parts }
 }

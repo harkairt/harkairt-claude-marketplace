@@ -69,43 +69,59 @@ describe('phaseOfSkill', () => {
   })
 })
 
+const done = (text: string) => ({ text, running: false })
+const running = (text: string) => ({ text, running: true })
+
 describe('formatPhaseLine', () => {
-  test('shows the running phase with its counter, not the done phases before it', () => {
+  test('shows only implementing with its counter in parentheses, not the done phases before it', () => {
     const line = formatPhaseLine(detectPhases({ spec: SPEC, plan: PLAN, tasks: TASKS }), null, '010-collapsible-sidebar')
 
     expect(line).toEqual({
       feature: '010-collapsible-sidebar',
-      part: { text: 'implementing 2/3', running: true },
+      parts: [running('implementing (2/3)')],
     })
   })
 
-  test('shows the latest done phase when nothing runs', () => {
-    expect(formatPhaseLine(detectPhases({ spec: SPEC, plan: PLAN }), null, 'f').part).toEqual({
-      text: 'planned',
-      running: false,
-    })
+  test('lists the done phases when nothing runs', () => {
+    expect(formatPhaseLine(detectPhases({ spec: SPEC, plan: PLAN }), null, 'f').parts).toEqual([
+      done('specified'),
+      done('planned'),
+    ])
   })
 
-  test('shows the live phase as running while its done marker is not met', () => {
-    expect(formatPhaseLine(detectPhases({ spec: SPEC }), 'plan', 'f').part).toEqual({ text: 'planning', running: true })
-    expect(formatPhaseLine(NONE, 'specify', 'f').part).toEqual({ text: 'specifying', running: true })
+  test('lists the done phases then the live phase as running while its done marker is not met', () => {
+    expect(formatPhaseLine(NONE, 'specify', 'f').parts).toEqual([running('specifying')])
+    expect(formatPhaseLine(detectPhases({ spec: SPEC }), 'plan', 'f').parts).toEqual([
+      done('specified'),
+      running('planning'),
+    ])
+    expect(formatPhaseLine(detectPhases({ spec: SPEC, plan: PLAN }), 'tasks', 'f').parts).toEqual([
+      done('specified'),
+      done('planned'),
+      running('tasking'),
+    ])
   })
 
   test('shows the live phase as done once its done marker is met', () => {
-    expect(formatPhaseLine(detectPhases({ spec: SPEC, plan: PLAN }), 'plan', 'f').part).toEqual({
-      text: 'planned',
-      running: false,
-    })
+    expect(formatPhaseLine(detectPhases({ spec: SPEC, plan: PLAN }), 'plan', 'f').parts).toEqual([
+      done('specified'),
+      done('planned'),
+    ])
   })
 
   test('shows implementing with the counter while the implement skill is live and no task is ticked', () => {
-    expect(formatPhaseLine(detectPhases({ tasks: TASKS_NONE_DONE }), 'implement', 'f').part).toEqual({
-      text: 'implementing 0/2',
-      running: true,
-    })
+    expect(formatPhaseLine(detectPhases({ tasks: TASKS_NONE_DONE }), 'implement', 'f').parts).toEqual([
+      running('implementing (0/2)'),
+    ])
+  })
+
+  test('shows implemented alone once every task is ticked', () => {
+    expect(formatPhaseLine(detectPhases({ spec: SPEC, plan: PLAN, tasks: TASKS_ALL_DONE }), null, 'f').parts).toEqual([
+      done('implemented'),
+    ])
   })
 
   test('shows the feature alone with nothing started', () => {
-    expect(formatPhaseLine(NONE, null, '010-x')).toEqual({ feature: '010-x', part: null })
+    expect(formatPhaseLine(NONE, null, '010-x')).toEqual({ feature: '010-x', parts: [] })
   })
 })

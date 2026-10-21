@@ -2,7 +2,7 @@ export type Phase = 'specify' | 'plan' | 'tasks' | 'implement'
 
 export type PhasePart = { text: string; running: boolean }
 
-export type PhaseLine = { feature: string; part: PhasePart | null }
+export type PhaseLine = { feature: string; parts: PhasePart[] }
 
 declare module 'claude-code' {
   interface PluginState {

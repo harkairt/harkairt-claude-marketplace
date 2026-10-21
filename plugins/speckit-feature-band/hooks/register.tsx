@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderElement, Timer } from 'claude-code'
 
 import type { Phase, PhaseLine } from '../types'
-import { detectPhases, formatPhaseLine, phaseOfSkill } from './phase'
+import { detectPhases, formatPhaseLine, isFinished, phaseOfSkill } from './phase'
 
 const WRITING_TOOLS = /^(Write|Edit|MultiEdit|NotebookEdit|Bash)$/
 const POLL_MS = 60_000
@@ -72,7 +72,7 @@ async function sync($: EngineInterface) {
   if (JSON.stringify(fresh) !== JSON.stringify(shown)) {
     await update($, phase, () => fresh)
   }
-  const liveDone = fresh !== null && fresh.part?.running !== true
+  const liveDone = fresh !== null && fresh.parts.every(part => !part.running)
   if (livePhase !== null && liveDone) {
     await update($, live, () => null)
   }
@@ -126,16 +126,20 @@ export const register: Register = on => {
 
     const beneath = await next(e)
     const { Box, Text } = $.ui.resolve(e)
-    const { part } = shown
+    const bright = isFinished(shown)
+    const last = shown.parts.length - 1
 
     return (
       <Box flexDirection="column">
         {!isEngineBand(beneath) && beneath}
         <Text>
-          {part !== null && !part.running && part.text}
-          {part !== null && part.running && <Text dimColor>{part.text}</Text>}
-          {part !== null && ' '}
-          <Text dimColor>{`<${shown.feature}>`}</Text>
+          {shown.parts.map((part, index) => (
+            <Text key={part.text}>
+              {part.running || bright ? part.text : <Text dimColor>{part.text}</Text>}
+              {index < last ? ', ' : ' '}
+            </Text>
+          ))}
+          {`<${shown.feature}>`}
         </Text>
       </Box>
     )
