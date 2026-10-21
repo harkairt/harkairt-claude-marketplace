@@ -140,6 +140,7 @@ test('shows the feature alone, bright, while no phase has started', async ($, on
     const row = await ui.find({ type: 'Text', text: '010-collapsible-sidebar' })
     expect(row).toBeDefined()
     expect(await dimSpans(ui)).toEqual(['010-'])
+    expect((await ui.findAll({ type: 'Text' })).find(span => span.text === '010-')?.props).toEqual({ dimColor: true, color: 'inactive' })
     expect(await dimOf(ui, 'collapsible-sidebar')).toBeUndefined()
     expect(await ui.find({ type: 'Text', text: /specif|plann|task|implement/ })).toBeUndefined()
     expect(await rowCount(ui)).toBe(1)

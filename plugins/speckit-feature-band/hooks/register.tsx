@@ -140,7 +140,7 @@ export const register: Register = on => {
               {index < last ? ', ' : ' '}
             </Text>
           ))}
-          {feature.id !== '' && <Text dimColor>{feature.id}</Text>}
+          {feature.id !== '' && <Text dimColor color="inactive">{feature.id}</Text>}
           <Text>{feature.name}</Text>
         </Text>
       </Box>
