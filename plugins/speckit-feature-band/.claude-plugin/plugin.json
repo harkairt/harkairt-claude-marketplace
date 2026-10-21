@@ -1,6 +1,6 @@
 {
   "name": "speckit-feature-band",
-  "version": "0.1.0",
-  "description": "Shows the content of .specify/feature.json in a band above the prompt.",
+  "version": "0.2.0",
+  "description": "Shows the speckit phase line (specified/planned/tasked/implementing 37/38 <feature>) in a band above the prompt, read from the feature's spec.md, plan.md and tasks.md.",
   "types": "./types/index.d.ts"
 }

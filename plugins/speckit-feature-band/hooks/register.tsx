@@ -1,61 +1,80 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderElement, Timer } from 'claude-code'
 
-import type { FeatureLine } from '../types'
+import type { Phase, PhaseLine } from '../types'
+import { detectPhases, formatPhaseLine, phaseOfSkill } from './phase'
 
-const POLL_MS = 2000
-const lines = atom({ plugin: 'speckit-feature-band', key: 'lines' } as const, [])
+const WRITING_TOOLS = /^(Write|Edit|MultiEdit|NotebookEdit|Bash)$/
+const POLL_MS = 60_000
+const phase = atom({ plugin: 'speckit-feature-band', key: 'phase' } as const, null)
+const live = atom({ plugin: 'speckit-feature-band', key: 'live' } as const, null)
 
-function parseObject(text: string): Record<string, unknown> | undefined {
+async function readFile($: EngineInterface, path: string): Promise<string | undefined> {
   try {
-    const parsed: unknown = JSON.parse(text)
-
-    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : undefined
+    return await $.fs.read(path)
   } catch {
     return undefined
   }
 }
 
-function toLines(text: string): FeatureLine[] {
-  const trimmed = text.trim()
-  if (trimmed === '') {
-    return []
+function featureDirectory(text: string | undefined): string | undefined {
+  if (text === undefined || text.trim() === '') {
+    return undefined
   }
-
-  const object = parseObject(trimmed)
-  if (object === undefined) {
-    return [{ value: trimmed }]
-  }
-
-  return Object.entries(object).map(([key, value]) => ({
-    key,
-    value: typeof value === 'string' ? value : JSON.stringify(value),
-  }))
-}
-
-async function readFeature($: EngineInterface): Promise<string> {
   try {
-    // Not cwd(): a Bash `cd` into a subfolder moves cwd away from .specify/.
-    const root = await $.session.root()
+    const parsed: unknown = JSON.parse(text)
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return undefined
+    }
+    const directory = (parsed as Record<string, unknown>).feature_directory
 
-    return await $.fs.read(`${root}/.specify/feature.json`)
+    return typeof directory === 'string' && directory.trim() !== '' ? directory.trim() : undefined
   } catch {
-    return ''
+    return undefined
   }
 }
 
-// The engine draws only surveys in this band, so with no survey its own drawing beneath is empty.
+async function readPhaseLine($: EngineInterface, livePhase: Phase | null): Promise<PhaseLine | null> {
+  // Not cwd(): a Bash `cd` into a subfolder moves cwd away from .specify/.
+  const root = await $.session.root()
+  const directory = featureDirectory(await readFile($, `${root}/.specify/feature.json`))
+  if (directory === undefined) {
+    return null
+  }
+
+  const folder = `${root}/${directory}`
+  const [spec, plan, tasks] = await Promise.all([
+    readFile($, `${folder}/spec.md`),
+    readFile($, `${folder}/plan.md`),
+    readFile($, `${folder}/tasks.md`),
+  ])
+  const feature = directory.split('/').filter(segment => segment !== '').at(-1) ?? directory
+
+  return formatPhaseLine(detectPhases({ spec, plan, tasks }), livePhase, feature)
+}
+
 function isEngineBand(tree: RenderElement): boolean {
   return tree.type === 'engine'
 }
 
 async function refresh($: EngineInterface) {
-  const fresh = toLines(await readFeature($))
-  const shown = await read($, lines)
+  try {
+    await sync($)
+  } catch {
+    return
+  }
+}
+
+async function sync($: EngineInterface) {
+  const livePhase = await read($, live)
+  const fresh = await readPhaseLine($, livePhase)
+  const shown = await read($, phase)
   if (JSON.stringify(fresh) !== JSON.stringify(shown)) {
-    await update($, lines, () => fresh)
+    await update($, phase, () => fresh)
+  }
+  const liveDone = fresh !== null && fresh.part?.running !== true
+  if (livePhase !== null && liveDone) {
+    await update($, live, () => null)
   }
 }
 
@@ -70,28 +89,54 @@ export const register: Register = on => {
     return next(e)
   })
 
+  on('skill.prompt', async ($, e, next) => {
+    const started = phaseOfSkill(e.skill)
+    if (started !== undefined) {
+      if ((await read($, live)) !== started) {
+        await update($, live, () => started)
+      }
+      await refresh($)
+    }
+
+    return next(e)
+  })
+
+  on('prompt.submit', async ($, e, next) => {
+    await refresh($)
+
+    return next(e)
+  })
+
+  on('tool.call', { tool: WRITING_TOOLS }, async ($, e, next) => {
+    const result = await next(e)
+    await refresh($)
+
+    return result
+  })
+
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) {
       return next(e)
     }
 
-    const shown = await read($, lines)
-    if (shown.length === 0) {
+    const shown = await read($, phase)
+    if (shown === null) {
       return next(e)
     }
 
     const beneath = await next(e)
     const { Box, Text } = $.ui.resolve(e)
+    const { part } = shown
 
     return (
       <Box flexDirection="column">
         {!isEngineBand(beneath) && beneath}
-        {shown.map(line => (
-          <Text>
-            {line.key !== undefined && <Text dimColor>{line.key}: </Text>}
-            {line.value}
-          </Text>
-        ))}
+        <Text>
+          {part !== null && !part.running && part.text}
+          {part !== null && part.running && <Text dimColor>{part.text}</Text>}
+          {part !== null && ' '}
+          <Text dimColor>{`<${shown.feature}>`}</Text>
+        </Text>
       </Box>
     )
   })
