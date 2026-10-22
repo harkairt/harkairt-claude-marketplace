@@ -138,7 +138,7 @@ export const register: Register = on => {
     const last = shown.parts.length - 1
     const feature = splitFeature(shown.feature)
     const isDim = (part: PhasePart) => !part.running && !bright
-    const separator = (index: number) => (index < last ? '-\u00a0\u00a0' : '\u00a0of\u00a0')
+    const separator = (index: number) => (index < last ? '-\u00a0\u00a0' : [<Text dimColor>of</Text>, '\u00a0'])
     const featureName = [
       feature.id !== '' && <Text dimColor color="inactive">{feature.id}</Text>,
       <Text>{feature.name}</Text>,
