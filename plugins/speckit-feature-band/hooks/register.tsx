@@ -145,10 +145,13 @@ export const register: Register = on => {
       feature.id !== '' && <Text dimColor color="inactive">{feature.id}</Text>,
       <Text>{feature.name}</Text>,
     ]
-    const stage = (part: PhasePart) =>
-      part.link === undefined ? part.text : `${part.text} [${part.link.label}](${fileUrl(part.link.path)})`
+    const stage = (part: PhasePart) => {
+      const text = part.aside === undefined ? part.text : `${part.text} ${part.aside}`
+
+      return part.link === undefined ? text : `${text} [${part.link.label}](${fileUrl(part.link.path)})`
+    }
     const markdown =
-      shown.parts.length === 0 ? shown.feature : `${shown.parts.map(stage).join(BETWEEN_STAGES)}of${NBSP}${shown.feature}`
+      shown.parts.length === 0 ? shown.feature : `${shown.parts.map(stage).join(BETWEEN_STAGES)} of${NBSP}${shown.feature}`
     const button = (file: FileLink, dim: boolean) => (
       <Button key={`open:${file.label}`} label={file.label} plain dimColor={dim} onPress={() => openFile($, file)} />
     )
@@ -161,6 +164,7 @@ export const register: Register = on => {
         <Box flexDirection="row" flexWrap="wrap">
           {shown.parts.map((part, index) => [
             isDim(part) ? <Text dimColor>{part.text}</Text> : <Text>{part.text}</Text>,
+            ...(part.aside === undefined ? [] : [' ', <Text dimColor color="inactive">{part.aside}</Text>]),
             ...(part.link === undefined ? [] : [' ', button(part.link, isDim(part))]),
             separator(index),
           ])}

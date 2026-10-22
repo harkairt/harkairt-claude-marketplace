@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { detectPhases, fileUrl, formatPhaseLine, phaseLinks, phaseOfSkill, splitFeature } from './phase'
+import { detectPhases, fileUrl, formatPhaseLine, isFinished, phaseLinks, phaseOfSkill, splitFeature } from './phase'
 import type { Detection } from './phase'
 
 const FOLDER = '/repo/specs/010-x'
@@ -106,12 +106,12 @@ const done = (text: string) => ({ text, running: false })
 const running = (text: string) => ({ text, running: true })
 
 describe('formatPhaseLine', () => {
-  test('shows only implementing with its counter in parentheses, not the done phases before it', () => {
+  test('shows only implemented with the ticked count and the total as an aside, not the done phases before it', () => {
     const line = formatPhaseLine(detectPhases({ spec: SPEC, plan: PLAN, tasks: TASKS }), null, '010-collapsible-sidebar')
 
     expect(line).toEqual({
       feature: '010-collapsible-sidebar',
-      parts: [running('implementing (2/3)')],
+      parts: [{ text: 'implemented 2', aside: 'out of 3', running: true }],
     })
   })
 
@@ -152,10 +152,14 @@ describe('formatPhaseLine', () => {
     ])
   })
 
-  test('shows implementing with the counter while the implement skill is live and no task is ticked', () => {
+  test('shows implemented 0 out of the total while the implement skill is live and no task is ticked', () => {
     expect(formatPhaseLine(detectPhases({ tasks: TASKS_NONE_DONE }), 'implement', 'f').parts).toEqual([
-      running('implementing (0/2)'),
+      { text: 'implemented 0', aside: 'out of 2', running: true },
     ])
+  })
+
+  test('shows plain implementing while the implement skill is live and tasks.md has no tasks yet', () => {
+    expect(formatPhaseLine(NONE, 'implement', 'f').parts).toEqual([running('implementing')])
   })
 
   test('shows implemented alone once every task is ticked', () => {
@@ -178,16 +182,23 @@ describe('formatPhaseLine', () => {
     ])
   })
 
-  test('puts the tasks.md link on implementing and on implemented', () => {
+  test('puts the tasks.md link on the running implement stage and on implemented', () => {
     const files = { spec: SPEC, plan: PLAN, tasks: TASKS }
     const allDone = { ...files, tasks: TASKS_ALL_DONE }
 
     expect(formatPhaseLine(detectPhases(files), null, 'f', phaseLinks(FOLDER, files)).parts).toEqual([
-      { ...running('implementing (2/3)'), link: TASKS_LINK },
+      { text: 'implemented 2', aside: 'out of 3', running: true, link: TASKS_LINK },
     ])
     expect(formatPhaseLine(detectPhases(allDone), null, 'f', phaseLinks(FOLDER, allDone)).parts).toEqual([
       { ...done('implemented'), link: TASKS_LINK },
     ])
+  })
+})
+
+describe('isFinished', () => {
+  test('finishes once every task is ticked, not while some ticked tasks run', () => {
+    expect(isFinished(formatPhaseLine(detectPhases({ tasks: TASKS_ALL_DONE }), null, 'f'))).toBe(true)
+    expect(isFinished(formatPhaseLine(detectPhases({ tasks: TASKS }), null, 'f'))).toBe(false)
   })
 })
 

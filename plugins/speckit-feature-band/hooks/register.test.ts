@@ -22,6 +22,10 @@ const ONLY_FEATURE_DIM = {
   terminal: [] as string[],
   desktop: ['of', '010-'],
 }
+const IMPLEMENTING_DIM = {
+  terminal: [] as string[],
+  desktop: ['out of 3', 'of', '010-'],
+}
 const MARKDOWN_LINK = /\[([^\]]*)\]\(([^)]*)\)/g
 const ENGINE_BAND = { type: 'engine' as const, ref: 0 }
 const BAND_PROPS = {
@@ -130,15 +134,17 @@ async function write($: Engine, path: string) {
   await $.tool.call({ tool: 'Write', file_path: path, content: '' })
 }
 
-test('shows only implementing with its counter, all bright, with the feature', async ($, on) => {
+test('shows only implemented with the ticked count bright, the total in the inactive gray, with the feature', async ($, on) => {
   project(on, inProgress())
   await $.session.start({ cwd: ROOT, surface: 'terminal', isInteractive: true })
 
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface)
+    const asideProps = { terminal: undefined, desktop: { dimColor: true, color: 'inactive' } }
 
-    expect(await shows(ui, surface, `implementing (2/3) tasks.md${OF}010-collapsible-sidebar`)).toBe(true)
-    expect(await dimSpans(ui)).toEqual(ONLY_FEATURE_DIM[surface])
+    expect(await shows(ui, surface, `implemented 2 out of 3 tasks.md${OF}010-collapsible-sidebar`)).toBe(true)
+    expect(await dimSpans(ui)).toEqual(IMPLEMENTING_DIM[surface])
+    expect((await ui.findAll({ type: 'Text' })).find(span => span.text === 'out of 3')?.props).toEqual(asideProps[surface])
     expect(await rowCount(ui)).toBe(1)
     await ui.unmount()
   }
@@ -216,7 +222,7 @@ test('names the file of each done stage after its text: a markdown link on the t
   }
 })
 
-test('names tasks.md after implementing: a markdown link on the terminal, a bright button on desktop', async ($, on) => {
+test('names tasks.md after the running implement stage: a markdown link on the terminal, a bright button on desktop', async ($, on) => {
   project(on, inProgress())
   await $.session.start({ cwd: ROOT, surface: 'terminal', isInteractive: true })
   const links = { terminal: [TASKS_LINK], desktop: [] }
@@ -225,8 +231,8 @@ test('names tasks.md after implementing: a markdown link on the terminal, a brig
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface)
 
-    expect(await shows(ui, surface, `implementing (2/3) tasks.md${OF}010-collapsible-sidebar`)).toBe(true)
-    expect(await dimSpans(ui)).toEqual(ONLY_FEATURE_DIM[surface])
+    expect(await shows(ui, surface, `implemented 2 out of 3 tasks.md${OF}010-collapsible-sidebar`)).toBe(true)
+    expect(await dimSpans(ui)).toEqual(IMPLEMENTING_DIM[surface])
     expect(await fileLinks(ui)).toEqual(links[surface])
     expect(await fileButtons(ui)).toEqual(buttons[surface])
     await ui.unmount()
@@ -521,7 +527,7 @@ test('keeps the band another plugin draws beneath, its own line after it', WITH_
     const drawn = await ui.drawn()
     expect(await rowCount(ui)).toBe(2)
     expect('children' in drawn && drawn.children?.[0]).toEqual(expect.objectContaining(OTHER_BAND))
-    expect(await shows(ui, surface, `implementing (2/3) tasks.md${OF}010-collapsible-sidebar`)).toBe(true)
+    expect(await shows(ui, surface, `implemented 2 out of 3 tasks.md${OF}010-collapsible-sidebar`)).toBe(true)
     await ui.unmount()
   }
 })

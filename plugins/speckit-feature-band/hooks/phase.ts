@@ -113,10 +113,12 @@ export function formatPhaseLine(detection: Detection, live: Phase | null, featur
     return { feature, parts: [withLink({ text: WORDS.implement.done, running: false }, links.implement)] }
   }
   if (detection.implement === 'running' || live === 'implement') {
-    const counter = detection.total > 0 ? ` (${detection.ticked}/${detection.total})` : ''
-    const text = `${WORDS.implement.running}${counter}`
+    const part: PhasePart =
+      detection.total > 0
+        ? { text: `${WORDS.implement.done} ${detection.ticked}`, aside: ` out of ${detection.total}`, running: true }
+        : { text: WORDS.implement.running, running: true }
 
-    return { feature, parts: [withLink({ text, running: true }, links.implement)] }
+    return { feature, parts: [withLink(part, links.implement)] }
   }
 
   const parts: PhasePart[] = []
