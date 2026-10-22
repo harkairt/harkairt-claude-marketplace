@@ -123,7 +123,8 @@ export function formatPhaseLine(detection: Detection, live: Phase | null, featur
   for (const phase of PHASES) {
     const status = detection[phase]
     if (status === 'done') {
-      parts.push(withLink({ text: WORDS[phase].done, running: false }, links[phase]))
+      const counter = phase === 'tasks' ? ` (${detection.total})` : ''
+      parts.push(withLink({ text: `${WORDS[phase].done}${counter}`, running: false }, links[phase]))
     } else if (status === 'running' || live === phase) {
       parts.push(withLink({ text: WORDS[phase].running, running: true }, links[phase]))
     }

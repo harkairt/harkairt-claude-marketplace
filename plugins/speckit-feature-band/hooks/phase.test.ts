@@ -142,6 +142,16 @@ describe('formatPhaseLine', () => {
     ])
   })
 
+  test('shows tasked with the task count in parentheses while no task is ticked', () => {
+    const tasks = `${TASKS_NONE_DONE}- [ ] T003 Wire the view\n`
+
+    expect(formatPhaseLine(detectPhases({ spec: SPEC, plan: PLAN, tasks }), null, 'f').parts).toEqual([
+      done('specified'),
+      done('planned'),
+      done('tasked (3)'),
+    ])
+  })
+
   test('shows implementing with the counter while the implement skill is live and no task is ticked', () => {
     expect(formatPhaseLine(detectPhases({ tasks: TASKS_NONE_DONE }), 'implement', 'f').parts).toEqual([
       running('implementing (0/2)'),
