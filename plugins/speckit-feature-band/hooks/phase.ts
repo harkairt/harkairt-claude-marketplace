@@ -1,8 +1,10 @@
-import type { Phase, PhaseLine, PhasePart } from '../types'
+import type { FileLink, Phase, PhaseLine, PhasePart } from '../types'
 
 export type PhaseStatus = 'none' | 'running' | 'done'
 
 export type PhaseFiles = { spec?: string; plan?: string; tasks?: string }
+
+export type PhaseLinks = Partial<Record<Phase, FileLink>>
 
 export type Detection = {
   specify: PhaseStatus
@@ -22,7 +24,14 @@ const WORDS: Record<Phase, { done: string; running: string }> = {
   implement: { done: 'implemented', running: 'implementing' },
 }
 
-const SPEC_TEMPLATE_MARKERS = ['[NEEDS CLARIFICATION', 'ACTION REQUIRED', '[FEATURE NAME]']
+const PHASE_FILES: Record<Phase, keyof PhaseFiles> = {
+  specify: 'spec',
+  plan: 'plan',
+  tasks: 'tasks',
+  implement: 'tasks',
+}
+
+const SPEC_TEMPLATE_MARKERS =['[NEEDS CLARIFICATION', 'ACTION REQUIRED', '[FEATURE NAME]']
 const PLAN_TEMPLATE_MARKERS = ['[FEATURE]', 'ACTION REQUIRED', '[REMOVE IF UNUSED]']
 const TASK_LINE = /^\s*- \[[ xX]\] T\d+/gm
 const OPEN_TASK_LINE = /^\s*- \[ \] T\d+/gm
@@ -63,6 +72,22 @@ export function detectPhases(files: PhaseFiles): Detection {
   }
 }
 
+export function fileUrl(path: string): string {
+  return `file://${path.split('/').map(encodeURIComponent).join('/')}`
+}
+
+export function phaseLinks(folder: string, files: PhaseFiles): PhaseLinks {
+  const links: PhaseLinks = {}
+  for (const phase of PHASES) {
+    const file = PHASE_FILES[phase]
+    if (files[file] !== undefined) {
+      links[phase] = { label: `${file}.md`, href: fileUrl(`${folder}/${file}.md`) }
+    }
+  }
+
+  return links
+}
+
 export function phaseOfSkill(skill: string): Phase | undefined {
   const match = SKILL_NAME.exec(skill)
 
@@ -79,23 +104,28 @@ export function isFinished(line: PhaseLine): boolean {
   return line.parts.length === 1 && line.parts[0]?.text === WORDS.implement.done
 }
 
-export function formatPhaseLine(detection: Detection, live: Phase | null, feature: string): PhaseLine {
+function withLink(part: PhasePart, link: FileLink | undefined): PhasePart {
+  return link === undefined ? part : { ...part, link }
+}
+
+export function formatPhaseLine(detection: Detection, live: Phase | null, feature: string, links: PhaseLinks = {}): PhaseLine {
   if (detection.implement === 'done') {
-    return { feature, parts: [{ text: WORDS.implement.done, running: false }] }
+    return { feature, parts: [withLink({ text: WORDS.implement.done, running: false }, links.implement)] }
   }
   if (detection.implement === 'running' || live === 'implement') {
     const counter = detection.total > 0 ? ` (${detection.ticked}/${detection.total})` : ''
+    const text = `${WORDS.implement.running}${counter}`
 
-    return { feature, parts: [{ text: `${WORDS.implement.running}${counter}`, running: true }] }
+    return { feature, parts: [withLink({ text, running: true }, links.implement)] }
   }
 
   const parts: PhasePart[] = []
   for (const phase of PHASES) {
     const status = detection[phase]
     if (status === 'done') {
-      parts.push({ text: WORDS[phase].done, running: false })
+      parts.push(withLink({ text: WORDS[phase].done, running: false }, links[phase]))
     } else if (status === 'running' || live === phase) {
-      parts.push({ text: WORDS[phase].running, running: true })
+      parts.push(withLink({ text: WORDS[phase].running, running: true }, links[phase]))
     }
   }
 

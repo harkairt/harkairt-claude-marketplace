@@ -1,6 +1,6 @@
 {
   "name": "speckit-feature-band",
-  "version": "0.2.0",
-  "description": "Shows the speckit stages (specified, planned, tasking <feature> or implementing (37/38) <feature>) in a band above the prompt, read from the feature's spec.md, plan.md and tasks.md.",
+  "version": "0.3.0",
+  "description": "Shows the speckit stages (specified spec.md, planned plan.md, tasking tasks.md <feature> or implementing (37/38) tasks.md <feature>) in a band above the prompt, read from the feature's spec.md, plan.md and tasks.md, each stage followed by a link to its file.",
   "types": "./types/index.d.ts"
 }

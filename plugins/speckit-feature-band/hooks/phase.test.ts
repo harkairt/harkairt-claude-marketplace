@@ -1,7 +1,12 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { detectPhases, formatPhaseLine, phaseOfSkill, splitFeature } from './phase'
+import { detectPhases, fileUrl, formatPhaseLine, phaseLinks, phaseOfSkill, splitFeature } from './phase'
 import type { Detection } from './phase'
+
+const FOLDER = '/repo/specs/010-x'
+const SPEC_LINK = { label: 'spec.md', href: 'file:///repo/specs/010-x/spec.md' }
+const PLAN_LINK = { label: 'plan.md', href: 'file:///repo/specs/010-x/plan.md' }
+const TASKS_LINK = { label: 'tasks.md', href: 'file:///repo/specs/010-x/tasks.md' }
 
 const SPEC = '# Feature Specification: Sidebar\n\n## User Scenarios\n'
 const PLAN = '# Implementation Plan: Sidebar\n\n## Summary\n'
@@ -50,6 +55,34 @@ describe('detectPhases', () => {
 
   test('reads implementation not started while no task is ticked', () => {
     expect(detectPhases({ tasks: TASKS_NONE_DONE })).toEqual({ ...NONE, tasks: 'done', implement: 'none', ticked: 0, total: 2 })
+  })
+})
+
+describe('fileUrl', () => {
+  test('writes an absolute path as a file URL', () => {
+    expect(fileUrl('/repo/specs/010-x/spec.md')).toBe('file:///repo/specs/010-x/spec.md')
+  })
+
+  test('percent-encodes what a URL path cannot hold, keeping the slashes', () => {
+    expect(fileUrl('/Users/me/My Repo/specs/010 #x%/spec.md')).toBe(
+      'file:///Users/me/My%20Repo/specs/010%20%23x%25/spec.md',
+    )
+  })
+})
+
+describe('phaseLinks', () => {
+  test('links each phase to its file in the feature folder, implement to tasks.md', () => {
+    expect(phaseLinks(FOLDER, { spec: SPEC, plan: PLAN, tasks: TASKS })).toEqual({
+      specify: SPEC_LINK,
+      plan: PLAN_LINK,
+      tasks: TASKS_LINK,
+      implement: TASKS_LINK,
+    })
+  })
+
+  test('links no phase whose file does not exist', () => {
+    expect(phaseLinks(FOLDER, { spec: SPEC })).toEqual({ specify: SPEC_LINK })
+    expect(phaseLinks(FOLDER, {})).toEqual({})
   })
 })
 
@@ -123,6 +156,28 @@ describe('formatPhaseLine', () => {
 
   test('shows the feature alone with nothing started', () => {
     expect(formatPhaseLine(NONE, null, '010-x')).toEqual({ feature: '010-x', parts: [] })
+  })
+
+  test('puts the link of its phase file on each part, none where the file does not exist yet', () => {
+    const files = { spec: SPEC, plan: PLAN }
+
+    expect(formatPhaseLine(detectPhases(files), 'tasks', 'f', phaseLinks(FOLDER, files)).parts).toEqual([
+      { ...done('specified'), link: SPEC_LINK },
+      { ...done('planned'), link: PLAN_LINK },
+      running('tasking'),
+    ])
+  })
+
+  test('puts the tasks.md link on implementing and on implemented', () => {
+    const files = { spec: SPEC, plan: PLAN, tasks: TASKS }
+    const allDone = { ...files, tasks: TASKS_ALL_DONE }
+
+    expect(formatPhaseLine(detectPhases(files), null, 'f', phaseLinks(FOLDER, files)).parts).toEqual([
+      { ...running('implementing (2/3)'), link: TASKS_LINK },
+    ])
+    expect(formatPhaseLine(detectPhases(allDone), null, 'f', phaseLinks(FOLDER, allDone)).parts).toEqual([
+      { ...done('implemented'), link: TASKS_LINK },
+    ])
   })
 })
 

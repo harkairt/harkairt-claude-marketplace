@@ -91,6 +91,12 @@ async function dimOf(ui: Texts, text: string) {
   return span?.props.dimColor
 }
 
+async function fileLinks(ui: Texts) {
+  const links = await ui.findAll({ type: 'Link' })
+
+  return links.map(link => link.props)
+}
+
 async function mountBand($: Engine, surface: (typeof SURFACES)[number]) {
   return $.ui.mount({ plugin: PLUGIN, surface, component: 'AbovePrompt', props: BAND_PROPS })
 }
@@ -106,7 +112,7 @@ test('shows only implementing with its counter, all bright, with the feature', a
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface)
 
-    const row = await ui.find({ type: 'Text', text: 'implementing (2/3) 010-collapsible-sidebar' })
+    const row = await ui.find({ type: 'Text', text: 'implementing (2/3) tasks.md 010-collapsible-sidebar' })
     expect(row).toBeDefined()
     expect(row?.props.dimColor).toBeUndefined()
     expect(await dimSpans(ui)).toEqual(['010-'])
@@ -122,9 +128,9 @@ test('lists the done phases dim, the feature bright, while nothing runs', async 
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface)
 
-    expect(await ui.find({ type: 'Text', text: 'specified, planned 010-collapsible-sidebar' })).toBeDefined()
-    expect(await doneSpans(ui)).toEqual(['specified', 'planned', '010-'])
-    expect(await dimSpans(ui)).toEqual(['specified', 'planned', '010-'])
+    expect(await ui.find({ type: 'Text', text: 'specified spec.md, planned plan.md 010-collapsible-sidebar' })).toBeDefined()
+    expect(await doneSpans(ui)).toEqual(['specified spec.md', 'planned plan.md', '010-'])
+    expect(await dimSpans(ui)).toEqual(['specified spec.md', 'planned plan.md', '010-'])
     expect(await dimOf(ui, 'collapsible-sidebar')).toBeUndefined()
     await ui.unmount()
   }
@@ -154,8 +160,61 @@ test('shows implemented alone, bright, once every task is ticked', async ($, on)
 
   const ui = await mountBand($, 'terminal')
 
-  expect(await ui.find({ type: 'Text', text: 'implemented 010-collapsible-sidebar' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'implemented tasks.md 010-collapsible-sidebar' })).toBeDefined()
   expect(await dimSpans(ui)).toEqual(['010-'])
+  await ui.unmount()
+})
+
+const SPEC_LINK = { href: `file://${FEATURE_DIR}/spec.md`, label: 'spec.md' }
+const PLAN_LINK = { href: `file://${FEATURE_DIR}/plan.md`, label: 'plan.md' }
+const TASKS_LINK = { href: `file://${FEATURE_DIR}/tasks.md`, label: 'tasks.md' }
+
+test('names the file of each done stage after its text, dim with it, as a link on the terminal only', async ($, on) => {
+  project(on, { [FEATURE_JSON]: FEATURE, [`${FEATURE_DIR}/spec.md`]: SPEC, [`${FEATURE_DIR}/plan.md`]: PLAN })
+  await $.session.start({ cwd: ROOT, surface: 'terminal', isInteractive: true })
+  const links = { terminal: [SPEC_LINK, PLAN_LINK], desktop: [] }
+
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface)
+
+    expect(await ui.find({ type: 'Text', text: 'specified spec.md, planned plan.md 010-collapsible-sidebar' })).toBeDefined()
+    expect(await dimSpans(ui)).toEqual(['specified spec.md', 'planned plan.md', '010-'])
+    expect(await fileLinks(ui)).toEqual(links[surface])
+    await ui.unmount()
+  }
+})
+
+test('names tasks.md after implementing, bright with it, as a link on the terminal only', async ($, on) => {
+  project(on, inProgress())
+  await $.session.start({ cwd: ROOT, surface: 'terminal', isInteractive: true })
+  const links = { terminal: [TASKS_LINK], desktop: [] }
+
+  for (const surface of SURFACES) {
+    const ui = await mountBand($, surface)
+
+    expect(await ui.find({ type: 'Text', text: 'implementing (2/3) tasks.md 010-collapsible-sidebar' })).toBeDefined()
+    expect(await dimSpans(ui)).toEqual(['010-'])
+    expect(await fileLinks(ui)).toEqual(links[surface])
+    await ui.unmount()
+  }
+})
+
+test('shows a live stage without a file name until its file exists, then links it', async ($, on) => {
+  const files: Record<string, string> = { [FEATURE_JSON]: FEATURE }
+  const clock = project(on, files)
+  await $.session.start({ cwd: ROOT, surface: 'terminal', isInteractive: true })
+  const ui = await mountBand($, 'terminal')
+
+  await $.skill.prompt({ skill: 'speckit-specify', text: 'spec it' })
+  await clock.settle()
+  expect(await ui.find({ type: 'Text', text: 'specifying 010-collapsible-sidebar' })).toBeDefined()
+  expect(await fileLinks(ui)).toEqual([])
+
+  files[`${FEATURE_DIR}/spec.md`] = '# Feature Specification: [FEATURE NAME]'
+  await write($, `${FEATURE_DIR}/spec.md`)
+  await clock.settle()
+  expect(await ui.find({ type: 'Text', text: 'specifying spec.md 010-collapsible-sidebar' })).toBeDefined()
+  expect(await fileLinks(ui)).toEqual([SPEC_LINK])
   await ui.unmount()
 })
 
@@ -182,13 +241,13 @@ test('follows the feature files once a Write tool call returns', async ($, on) =
   const clock = project(on, files)
   await $.session.start({ cwd: ROOT, surface: 'terminal', isInteractive: true })
   const ui = await mountBand($, 'terminal')
-  expect(await ui.find({ type: 'Text', text: 'specified 010-collapsible-sidebar' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'specified spec.md 010-collapsible-sidebar' })).toBeDefined()
   files[`${FEATURE_DIR}/plan.md`] = PLAN
 
   await write($, `${FEATURE_DIR}/plan.md`)
   await clock.settle()
 
-  expect(await ui.find({ type: 'Text', text: 'specified, planned 010-collapsible-sidebar' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'specified spec.md, planned plan.md 010-collapsible-sidebar' })).toBeDefined()
   await ui.unmount()
 })
 
@@ -200,10 +259,10 @@ test('follows files changed outside the session within a minute', async ($, on) 
   files[`${FEATURE_DIR}/plan.md`] = PLAN
 
   await clock.advance(59_000)
-  expect(await ui.find({ type: 'Text', text: 'specified 010-collapsible-sidebar' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'specified spec.md 010-collapsible-sidebar' })).toBeDefined()
 
   await clock.advance(1000)
-  expect(await ui.find({ type: 'Text', text: 'specified, planned 010-collapsible-sidebar' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'specified spec.md, planned plan.md 010-collapsible-sidebar' })).toBeDefined()
   await ui.unmount()
 })
 
@@ -218,7 +277,7 @@ test('follows the feature files once a prompt is submitted', async ($, on) => {
   await $.prompt.submit({ text: 'go on', wait: false, origin: { kind: 'composer' } })
   await clock.settle()
 
-  expect(await ui.find({ type: 'Text', text: 'specified 010-collapsible-sidebar' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'specified spec.md 010-collapsible-sidebar' })).toBeDefined()
   await ui.unmount()
 })
 
@@ -230,14 +289,14 @@ test('shows the phase a speckit skill runs as running until its done marker appe
 
   await $.skill.prompt({ skill: 'foo:speckit-plan', text: 'plan it' })
   await clock.settle()
-  expect(await ui.find({ type: 'Text', text: 'specified, planning 010-collapsible-sidebar' })).toBeDefined()
-  expect(await doneSpans(ui)).toEqual(['specified', '010-'])
-  expect(await dimSpans(ui)).toEqual(['specified', '010-'])
+  expect(await ui.find({ type: 'Text', text: 'specified spec.md, planning 010-collapsible-sidebar' })).toBeDefined()
+  expect(await doneSpans(ui)).toEqual(['specified spec.md', '010-'])
+  expect(await dimSpans(ui)).toEqual(['specified spec.md', '010-'])
 
   files[`${FEATURE_DIR}/plan.md`] = PLAN
   await write($, `${FEATURE_DIR}/plan.md`)
   await clock.settle()
-  expect(await ui.find({ type: 'Text', text: 'specified, planned 010-collapsible-sidebar' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'specified spec.md, planned plan.md 010-collapsible-sidebar' })).toBeDefined()
   await ui.unmount()
 })
 
@@ -315,7 +374,7 @@ test('follows the project root when it moves', async ($, on) => {
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface)
 
-    expect(await ui.find({ type: 'Text', text: 'specified 020-other' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: 'specified spec.md 020-other' })).toBeDefined()
     await ui.unmount()
   }
 })
@@ -349,7 +408,7 @@ test('keeps the band another plugin draws beneath, its own line after it', WITH_
     const drawn = await ui.drawn()
     expect(await rowCount(ui)).toBe(2)
     expect('children' in drawn && drawn.children?.[0]).toEqual(expect.objectContaining(OTHER_BAND))
-    expect(await ui.find({ type: 'Text', text: 'implementing (2/3) 010-collapsible-sidebar' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: 'implementing (2/3) tasks.md 010-collapsible-sidebar' })).toBeDefined()
     await ui.unmount()
   }
 })

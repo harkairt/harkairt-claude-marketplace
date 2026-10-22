@@ -53,7 +53,7 @@
     {
       "name": "speckit-feature-band",
       "source": "./plugins/speckit-feature-band",
-      "description": "A mod that shows the content of .specify/feature.json in a band above the prompt (Claude Code terminal and Desktop Code tab)."
+      "description": "A mod that shows the speckit stages of the current feature (specified, planned, tasking or implementing (37/38)) in a band above the prompt, each followed by a link to its spec.md, plan.md or tasks.md (Claude Code terminal and Desktop Code tab)."
     },
     {
       "name": "statusline-band",

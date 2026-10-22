@@ -1,8 +1,8 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderElement, Timer } from 'claude-code'
 
-import type { Phase, PhaseLine } from '../types'
-import { detectPhases, formatPhaseLine, isFinished, phaseOfSkill, splitFeature } from './phase'
+import type { Phase, PhaseLine, PhasePart } from '../types'
+import { detectPhases, formatPhaseLine, isFinished, phaseLinks, phaseOfSkill, splitFeature } from './phase'
 
 const WRITING_TOOLS = /^(Write|Edit|MultiEdit|NotebookEdit|Bash)$/
 const POLL_MS = 60_000
@@ -49,8 +49,9 @@ async function readPhaseLine($: EngineInterface, livePhase: Phase | null): Promi
     readFile($, `${folder}/tasks.md`),
   ])
   const feature = directory.split('/').filter(segment => segment !== '').at(-1) ?? directory
+  const files = { spec, plan, tasks }
 
-  return formatPhaseLine(detectPhases({ spec, plan, tasks }), livePhase, feature)
+  return formatPhaseLine(detectPhases(files), livePhase, feature, phaseLinks(folder, files))
 }
 
 function isEngineBand(tree: RenderElement): boolean {
@@ -125,10 +126,14 @@ export const register: Register = on => {
     }
 
     const beneath = await next(e)
-    const { Box, Text } = $.ui.resolve(e)
+    const { Box, Link, Text } = $.ui.resolve(e)
     const bright = isFinished(shown)
     const last = shown.parts.length - 1
     const feature = splitFeature(shown.feature)
+    const stage = (part: PhasePart) =>
+      part.link === undefined
+        ? [part.text]
+        : [part.text, ' ', <Link key={part.link.href} href={part.link.href} label={part.link.label} />]
 
     return (
       <Box flexDirection="column">
@@ -136,7 +141,7 @@ export const register: Register = on => {
         <Text>
           {shown.parts.map((part, index) => (
             <Text key={part.text}>
-              {part.running || bright ? part.text : <Text dimColor>{part.text}</Text>}
+              {part.running || bright ? stage(part) : <Text dimColor>{stage(part)}</Text>}
               {index < last ? ', ' : ' '}
             </Text>
           ))}
