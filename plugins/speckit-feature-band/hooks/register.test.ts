@@ -11,6 +11,10 @@ const SPEC = '# Feature Specification: Sidebar\n\n## User Scenarios\n'
 const PLAN = '# Implementation Plan: Sidebar\n\n## Summary\n'
 const TASKS = '- [x] T001 Set up\n- [X] T002 Add model\n- [ ] T003 Wire the view\n'
 const SURFACES = ['terminal', 'desktop'] as const
+const DONE_SPANS = {
+  terminal: ['specified spec.md', 'planned plan.md', '010-'],
+  desktop: ['specified', 'planned', '010-'],
+}
 const ENGINE_BAND = { type: 'engine' as const, ref: 0 }
 const BAND_PROPS = {
   hasSurvey: false,
@@ -97,6 +101,12 @@ async function fileLinks(ui: Texts) {
   return links.map(link => link.props)
 }
 
+async function fileButtons(ui: Texts) {
+  const buttons = await ui.findAll({ type: 'Button' })
+
+  return buttons.map(button => button.props)
+}
+
 async function mountBand($: Engine, surface: (typeof SURFACES)[number]) {
   return $.ui.mount({ plugin: PLUGIN, surface, component: 'AbovePrompt', props: BAND_PROPS })
 }
@@ -112,7 +122,7 @@ test('shows only implementing with its counter, all bright, with the feature', a
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface)
 
-    const row = await ui.find({ type: 'Text', text: 'implementing (2/3) tasks.md 010-collapsible-sidebar' })
+    const row = await ui.find({ text: 'implementing (2/3) tasks.md 010-collapsible-sidebar' })
     expect(row).toBeDefined()
     expect(row?.props.dimColor).toBeUndefined()
     expect(await dimSpans(ui)).toEqual(['010-'])
@@ -128,9 +138,9 @@ test('lists the done phases dim, the feature bright, while nothing runs', async 
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface)
 
-    expect(await ui.find({ type: 'Text', text: 'specified spec.md, planned plan.md 010-collapsible-sidebar' })).toBeDefined()
-    expect(await doneSpans(ui)).toEqual(['specified spec.md', 'planned plan.md', '010-'])
-    expect(await dimSpans(ui)).toEqual(['specified spec.md', 'planned plan.md', '010-'])
+    expect(await ui.find({ text: 'specified spec.md, planned plan.md 010-collapsible-sidebar' })).toBeDefined()
+    expect(await doneSpans(ui)).toEqual(DONE_SPANS[surface])
+    expect(await dimSpans(ui)).toEqual(DONE_SPANS[surface])
     expect(await dimOf(ui, 'collapsible-sidebar')).toBeUndefined()
     await ui.unmount()
   }
@@ -143,7 +153,7 @@ test('shows the feature alone, bright, while no phase has started', async ($, on
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface)
 
-    const row = await ui.find({ type: 'Text', text: '010-collapsible-sidebar' })
+    const row = await ui.find({ text: '010-collapsible-sidebar' })
     expect(row).toBeDefined()
     expect(await dimSpans(ui)).toEqual(['010-'])
     expect((await ui.findAll({ type: 'Text' })).find(span => span.text === '010-')?.props).toEqual({ dimColor: true, color: 'inactive' })
@@ -160,7 +170,7 @@ test('shows implemented alone, bright, once every task is ticked', async ($, on)
 
   const ui = await mountBand($, 'terminal')
 
-  expect(await ui.find({ type: 'Text', text: 'implemented tasks.md 010-collapsible-sidebar' })).toBeDefined()
+  expect(await ui.find({ text: 'implemented tasks.md 010-collapsible-sidebar' })).toBeDefined()
   expect(await dimSpans(ui)).toEqual(['010-'])
   await ui.unmount()
 })
@@ -169,32 +179,42 @@ const SPEC_LINK = { href: `file://${FEATURE_DIR}/spec.md`, label: 'spec.md' }
 const PLAN_LINK = { href: `file://${FEATURE_DIR}/plan.md`, label: 'plan.md' }
 const TASKS_LINK = { href: `file://${FEATURE_DIR}/tasks.md`, label: 'tasks.md' }
 
-test('names the file of each done stage after its text, dim with it, as a link on the terminal only', async ($, on) => {
+test('names the file of each done stage after its text, dim with it: a link on the terminal, a button on desktop', async ($, on) => {
   project(on, { [FEATURE_JSON]: FEATURE, [`${FEATURE_DIR}/spec.md`]: SPEC, [`${FEATURE_DIR}/plan.md`]: PLAN })
   await $.session.start({ cwd: ROOT, surface: 'terminal', isInteractive: true })
   const links = { terminal: [SPEC_LINK, PLAN_LINK], desktop: [] }
+  const buttons = {
+    terminal: [],
+    desktop: [
+      { key: 'open:spec.md', label: 'spec.md', plain: true, dimColor: true },
+      { key: 'open:plan.md', label: 'plan.md', plain: true, dimColor: true },
+    ],
+  }
 
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface)
 
-    expect(await ui.find({ type: 'Text', text: 'specified spec.md, planned plan.md 010-collapsible-sidebar' })).toBeDefined()
-    expect(await dimSpans(ui)).toEqual(['specified spec.md', 'planned plan.md', '010-'])
+    expect(await ui.find({ text: 'specified spec.md, planned plan.md 010-collapsible-sidebar' })).toBeDefined()
+    expect(await dimSpans(ui)).toEqual(DONE_SPANS[surface])
     expect(await fileLinks(ui)).toEqual(links[surface])
+    expect(await fileButtons(ui)).toEqual(buttons[surface])
     await ui.unmount()
   }
 })
 
-test('names tasks.md after implementing, bright with it, as a link on the terminal only', async ($, on) => {
+test('names tasks.md after implementing, bright with it: a link on the terminal, a button on desktop', async ($, on) => {
   project(on, inProgress())
   await $.session.start({ cwd: ROOT, surface: 'terminal', isInteractive: true })
   const links = { terminal: [TASKS_LINK], desktop: [] }
+  const buttons = { terminal: [], desktop: [{ key: 'open:tasks.md', label: 'tasks.md', plain: true, dimColor: false }] }
 
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface)
 
-    expect(await ui.find({ type: 'Text', text: 'implementing (2/3) tasks.md 010-collapsible-sidebar' })).toBeDefined()
+    expect(await ui.find({ text: 'implementing (2/3) tasks.md 010-collapsible-sidebar' })).toBeDefined()
     expect(await dimSpans(ui)).toEqual(['010-'])
     expect(await fileLinks(ui)).toEqual(links[surface])
+    expect(await fileButtons(ui)).toEqual(buttons[surface])
     await ui.unmount()
   }
 })
@@ -207,16 +227,96 @@ test('shows a live stage without a file name until its file exists, then links i
 
   await $.skill.prompt({ skill: 'speckit-specify', text: 'spec it' })
   await clock.settle()
-  expect(await ui.find({ type: 'Text', text: 'specifying 010-collapsible-sidebar' })).toBeDefined()
+  expect(await ui.find({ text: 'specifying 010-collapsible-sidebar' })).toBeDefined()
   expect(await fileLinks(ui)).toEqual([])
 
   files[`${FEATURE_DIR}/spec.md`] = '# Feature Specification: [FEATURE NAME]'
   await write($, `${FEATURE_DIR}/spec.md`)
   await clock.settle()
-  expect(await ui.find({ type: 'Text', text: 'specifying spec.md 010-collapsible-sidebar' })).toBeDefined()
+  expect(await ui.find({ text: 'specifying spec.md 010-collapsible-sidebar' })).toBeDefined()
   expect(await fileLinks(ui)).toEqual([SPEC_LINK])
   await ui.unmount()
 })
+
+type Host = { os?: string; uname?: string; exitCode?: number; deny?: string }
+
+function host(on: On, { os, uname = 'Darwin\n', exitCode = 0, deny }: Host = {}) {
+  const runs: string[][] = []
+  const toasts: string[] = []
+  mock.env(on, os === undefined ? {} : { OS: os })
+  on('process.run', ($, e) => {
+    runs.push([...e.argv])
+    if (deny !== undefined) {
+      return { deny }
+    }
+    const isUname = e.argv[0] === 'uname'
+
+    return {
+      value: {
+        exitCode: isUname ? 0 : exitCode,
+        stdout: isUname ? uname : '',
+        stderr: '',
+        isStdoutTruncated: false,
+        isStderrTruncated: false,
+      },
+    }
+  })
+  on('ui.toast', ($, e) => {
+    toasts.push(e.text)
+
+    return { value: undefined }
+  })
+
+  return { runs, toasts }
+}
+
+async function pressSpec($: Engine) {
+  const ui = await mountBand($, 'desktop')
+  await ui.press({ key: 'open:spec.md' })
+  await ui.unmount()
+}
+
+for (const [name, setup, opener] of [
+  ['open on macOS', { uname: 'Darwin\n' }, ['open']],
+  ['xdg-open on Linux', { uname: 'Linux\n' }, ['xdg-open']],
+] as const) {
+  test(`opens the file a desktop button names with ${name}, its absolute path one argument`, async ($, on) => {
+    project(on, { [FEATURE_JSON]: FEATURE, [`${FEATURE_DIR}/spec.md`]: SPEC })
+    const { runs, toasts } = host(on, setup)
+    await $.session.start({ cwd: ROOT, surface: 'desktop', isInteractive: true })
+
+    await pressSpec($)
+
+    expect(runs).toEqual([['uname', '-s'], [...opener, `${FEATURE_DIR}/spec.md`]])
+    expect(toasts).toEqual([])
+  })
+}
+
+test('opens the file with start through cmd on Windows, asking no uname', async ($, on) => {
+  project(on, { [FEATURE_JSON]: FEATURE, [`${FEATURE_DIR}/spec.md`]: SPEC })
+  const { runs, toasts } = host(on, { os: 'Windows_NT' })
+  await $.session.start({ cwd: ROOT, surface: 'desktop', isInteractive: true })
+
+  await pressSpec($)
+
+  expect(runs).toEqual([['cmd', '/c', 'start', '', `${FEATURE_DIR}/spec.md`]])
+  expect(toasts).toEqual([])
+})
+
+for (const [name, setup] of [
+  ['the opener exits non-zero', { exitCode: 1 }],
+  ['the host runs no process', { deny: 'no process on this host' }],
+] as const) {
+  test(`raises a toast naming the file when ${name}`, async ($, on) => {
+    project(on, { [FEATURE_JSON]: FEATURE, [`${FEATURE_DIR}/spec.md`]: SPEC })
+    const { toasts } = host(on, setup)
+    await $.session.start({ cwd: ROOT, surface: 'desktop', isInteractive: true })
+
+    await pressSpec($)
+
+    expect(toasts).toEqual(['Could not open spec.md'])
+  })
+}
 
 test('leaves the band to the survey while one holds it', async ($, on) => {
   project(on, inProgress())
@@ -241,13 +341,13 @@ test('follows the feature files once a Write tool call returns', async ($, on) =
   const clock = project(on, files)
   await $.session.start({ cwd: ROOT, surface: 'terminal', isInteractive: true })
   const ui = await mountBand($, 'terminal')
-  expect(await ui.find({ type: 'Text', text: 'specified spec.md 010-collapsible-sidebar' })).toBeDefined()
+  expect(await ui.find({ text: 'specified spec.md 010-collapsible-sidebar' })).toBeDefined()
   files[`${FEATURE_DIR}/plan.md`] = PLAN
 
   await write($, `${FEATURE_DIR}/plan.md`)
   await clock.settle()
 
-  expect(await ui.find({ type: 'Text', text: 'specified spec.md, planned plan.md 010-collapsible-sidebar' })).toBeDefined()
+  expect(await ui.find({ text: 'specified spec.md, planned plan.md 010-collapsible-sidebar' })).toBeDefined()
   await ui.unmount()
 })
 
@@ -259,10 +359,10 @@ test('follows files changed outside the session within a minute', async ($, on) 
   files[`${FEATURE_DIR}/plan.md`] = PLAN
 
   await clock.advance(59_000)
-  expect(await ui.find({ type: 'Text', text: 'specified spec.md 010-collapsible-sidebar' })).toBeDefined()
+  expect(await ui.find({ text: 'specified spec.md 010-collapsible-sidebar' })).toBeDefined()
 
   await clock.advance(1000)
-  expect(await ui.find({ type: 'Text', text: 'specified spec.md, planned plan.md 010-collapsible-sidebar' })).toBeDefined()
+  expect(await ui.find({ text: 'specified spec.md, planned plan.md 010-collapsible-sidebar' })).toBeDefined()
   await ui.unmount()
 })
 
@@ -277,7 +377,7 @@ test('follows the feature files once a prompt is submitted', async ($, on) => {
   await $.prompt.submit({ text: 'go on', wait: false, origin: { kind: 'composer' } })
   await clock.settle()
 
-  expect(await ui.find({ type: 'Text', text: 'specified spec.md 010-collapsible-sidebar' })).toBeDefined()
+  expect(await ui.find({ text: 'specified spec.md 010-collapsible-sidebar' })).toBeDefined()
   await ui.unmount()
 })
 
@@ -289,14 +389,14 @@ test('shows the phase a speckit skill runs as running until its done marker appe
 
   await $.skill.prompt({ skill: 'foo:speckit-plan', text: 'plan it' })
   await clock.settle()
-  expect(await ui.find({ type: 'Text', text: 'specified spec.md, planning 010-collapsible-sidebar' })).toBeDefined()
+  expect(await ui.find({ text: 'specified spec.md, planning 010-collapsible-sidebar' })).toBeDefined()
   expect(await doneSpans(ui)).toEqual(['specified spec.md', '010-'])
   expect(await dimSpans(ui)).toEqual(['specified spec.md', '010-'])
 
   files[`${FEATURE_DIR}/plan.md`] = PLAN
   await write($, `${FEATURE_DIR}/plan.md`)
   await clock.settle()
-  expect(await ui.find({ type: 'Text', text: 'specified spec.md, planned plan.md 010-collapsible-sidebar' })).toBeDefined()
+  expect(await ui.find({ text: 'specified spec.md, planned plan.md 010-collapsible-sidebar' })).toBeDefined()
   await ui.unmount()
 })
 
@@ -309,7 +409,7 @@ test('moves the live phase to the speckit skill that fires last', async ($, on) 
   await $.skill.prompt({ skill: 'speckit-tasks', text: 'task it' })
   await clock.settle()
 
-  expect(await ui.find({ type: 'Text', text: 'tasking 010-collapsible-sidebar' })).toBeDefined()
+  expect(await ui.find({ text: 'tasking 010-collapsible-sidebar' })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /specifying/ })).toBeUndefined()
   await ui.unmount()
 })
@@ -374,7 +474,7 @@ test('follows the project root when it moves', async ($, on) => {
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface)
 
-    expect(await ui.find({ type: 'Text', text: 'specified spec.md 020-other' })).toBeDefined()
+    expect(await ui.find({ text: 'specified spec.md 020-other' })).toBeDefined()
     await ui.unmount()
   }
 })
@@ -408,7 +508,7 @@ test('keeps the band another plugin draws beneath, its own line after it', WITH_
     const drawn = await ui.drawn()
     expect(await rowCount(ui)).toBe(2)
     expect('children' in drawn && drawn.children?.[0]).toEqual(expect.objectContaining(OTHER_BAND))
-    expect(await ui.find({ type: 'Text', text: 'implementing (2/3) tasks.md 010-collapsible-sidebar' })).toBeDefined()
+    expect(await ui.find({ text: 'implementing (2/3) tasks.md 010-collapsible-sidebar' })).toBeDefined()
     await ui.unmount()
   }
 })

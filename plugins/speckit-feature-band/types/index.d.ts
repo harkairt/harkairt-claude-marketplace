@@ -1,6 +1,6 @@
 export type Phase = 'specify' | 'plan' | 'tasks' | 'implement'
 
-export type FileLink = { label: string; href: string }
+export type FileLink = { label: string; path: string }
 
 export type PhasePart = { text: string; running: boolean; link?: FileLink }
 

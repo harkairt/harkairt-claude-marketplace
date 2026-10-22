@@ -4,9 +4,9 @@ import { detectPhases, fileUrl, formatPhaseLine, phaseLinks, phaseOfSkill, split
 import type { Detection } from './phase'
 
 const FOLDER = '/repo/specs/010-x'
-const SPEC_LINK = { label: 'spec.md', href: 'file:///repo/specs/010-x/spec.md' }
-const PLAN_LINK = { label: 'plan.md', href: 'file:///repo/specs/010-x/plan.md' }
-const TASKS_LINK = { label: 'tasks.md', href: 'file:///repo/specs/010-x/tasks.md' }
+const SPEC_LINK = { label: 'spec.md', path: '/repo/specs/010-x/spec.md' }
+const PLAN_LINK = { label: 'plan.md', path: '/repo/specs/010-x/plan.md' }
+const TASKS_LINK = { label: 'tasks.md', path: '/repo/specs/010-x/tasks.md' }
 
 const SPEC = '# Feature Specification: Sidebar\n\n## User Scenarios\n'
 const PLAN = '# Implementation Plan: Sidebar\n\n## Summary\n'

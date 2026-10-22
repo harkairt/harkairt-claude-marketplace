@@ -1,8 +1,9 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderElement, Timer } from 'claude-code'
 
-import type { Phase, PhaseLine, PhasePart } from '../types'
-import { detectPhases, formatPhaseLine, isFinished, phaseLinks, phaseOfSkill, splitFeature } from './phase'
+import type { FileLink, Phase, PhaseLine, PhasePart } from '../types'
+import { openOnHost } from './opener'
+import { detectPhases, fileUrl, formatPhaseLine, isFinished, phaseLinks, phaseOfSkill, splitFeature } from './phase'
 
 const WRITING_TOOLS = /^(Write|Edit|MultiEdit|NotebookEdit|Bash)$/
 const POLL_MS = 60_000
@@ -56,6 +57,12 @@ async function readPhaseLine($: EngineInterface, livePhase: Phase | null): Promi
 
 function isEngineBand(tree: RenderElement): boolean {
   return tree.type === 'engine'
+}
+
+async function openFile($: EngineInterface, link: FileLink) {
+  if (!(await openOnHost($, link.path))) {
+    $.ui.toast(`Could not open ${link.label}`)
+  }
 }
 
 async function refresh($: EngineInterface) {
@@ -126,28 +133,51 @@ export const register: Register = on => {
     }
 
     const beneath = await next(e)
-    const { Box, Link, Text } = $.ui.resolve(e)
+    const { Box, Button, Link, Text } = $.ui.resolve(e)
     const bright = isFinished(shown)
     const last = shown.parts.length - 1
     const feature = splitFeature(shown.feature)
-    const stage = (part: PhasePart) =>
+    const isDim = (part: PhasePart) => !part.running && !bright
+    const separator = (index: number) => (index < last ? ', ' : ' ')
+    const featureName = [
+      feature.id !== '' && <Text dimColor color="inactive">{feature.id}</Text>,
+      <Text>{feature.name}</Text>,
+    ]
+    const linked = (part: PhasePart) =>
       part.link === undefined
         ? [part.text]
-        : [part.text, ' ', <Link key={part.link.href} href={part.link.href} label={part.link.label} />]
+        : [part.text, ' ', <Link key={part.link.path} href={fileUrl(part.link.path)} label={part.link.label} />]
+    const button = (file: FileLink, dim: boolean) => (
+      <Button key={`open:${file.label}`} label={file.label} plain dimColor={dim} onPress={() => openFile($, file)} />
+    )
+
+    // Only the terminal keeps a file: Link (others draw it plain), and no surface takes a Button inside a Text.
+    const line =
+      e.surface === 'terminal' ? (
+        <Text>
+          {shown.parts.map((part, index) => (
+            <Text key={part.text}>
+              {isDim(part) ? <Text dimColor>{linked(part)}</Text> : linked(part)}
+              {separator(index)}
+            </Text>
+          ))}
+          {featureName}
+        </Text>
+      ) : (
+        <Box flexDirection="row" flexWrap="wrap">
+          {shown.parts.map((part, index) => [
+            isDim(part) ? <Text dimColor>{part.text}</Text> : <Text>{part.text}</Text>,
+            ...(part.link === undefined ? [] : [' ', button(part.link, isDim(part))]),
+            separator(index),
+          ])}
+          {featureName}
+        </Box>
+      )
 
     return (
       <Box flexDirection="column">
         {!isEngineBand(beneath) && beneath}
-        <Text>
-          {shown.parts.map((part, index) => (
-            <Text key={part.text}>
-              {part.running || bright ? stage(part) : <Text dimColor>{stage(part)}</Text>}
-              {index < last ? ', ' : ' '}
-            </Text>
-          ))}
-          {feature.id !== '' && <Text dimColor color="inactive">{feature.id}</Text>}
-          <Text>{feature.name}</Text>
-        </Text>
+        {line}
       </Box>
     )
   })

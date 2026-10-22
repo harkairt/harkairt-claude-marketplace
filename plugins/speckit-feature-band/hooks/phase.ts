@@ -81,7 +81,7 @@ export function phaseLinks(folder: string, files: PhaseFiles): PhaseLinks {
   for (const phase of PHASES) {
     const file = PHASE_FILES[phase]
     if (files[file] !== undefined) {
-      links[phase] = { label: `${file}.md`, href: fileUrl(`${folder}/${file}.md`) }
+      links[phase] = { label: `${file}.md`, path: `${folder}/${file}.md` }
     }
   }
 
