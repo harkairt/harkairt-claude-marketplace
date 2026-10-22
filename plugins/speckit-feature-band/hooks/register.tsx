@@ -7,6 +7,8 @@ import { detectPhases, fileUrl, formatPhaseLine, isFinished, phaseLinks, phaseOf
 
 const WRITING_TOOLS = /^(Write|Edit|MultiEdit|NotebookEdit|Bash)$/
 const POLL_MS = 60_000
+const NBSP = String.fromCharCode(0xa0)
+const BETWEEN_STAGES = `-${NBSP}${NBSP}`
 const phase = atom({ plugin: 'speckit-feature-band', key: 'phase' } as const, null)
 const live = atom({ plugin: 'speckit-feature-band', key: 'live' } as const, null)
 
@@ -133,36 +135,28 @@ export const register: Register = on => {
     }
 
     const beneath = await next(e)
-    const { Box, Button, Link, Text } = $.ui.resolve(e)
+    const { Box, Button, Markdown, Text } = $.ui.resolve(e)
     const bright = isFinished(shown)
     const last = shown.parts.length - 1
     const feature = splitFeature(shown.feature)
     const isDim = (part: PhasePart) => !part.running && !bright
-    const separator = (index: number) => (index < last ? '-\u00a0\u00a0' : [<Text dimColor>of</Text>, '\u00a0'])
+    const separator = (index: number) => (index < last ? BETWEEN_STAGES : [<Text dimColor>of</Text>, NBSP])
     const featureName = [
       feature.id !== '' && <Text dimColor color="inactive">{feature.id}</Text>,
       <Text>{feature.name}</Text>,
     ]
-    const linked = (part: PhasePart) =>
-      part.link === undefined
-        ? [part.text]
-        : [part.text, ' ', <Link key={part.link.path} href={fileUrl(part.link.path)} label={part.link.label} />]
+    const stage = (part: PhasePart) =>
+      part.link === undefined ? part.text : `${part.text} [${part.link.label}](${fileUrl(part.link.path)})`
+    const markdown =
+      shown.parts.length === 0 ? shown.feature : `${shown.parts.map(stage).join(BETWEEN_STAGES)}of${NBSP}${shown.feature}`
     const button = (file: FileLink, dim: boolean) => (
       <Button key={`open:${file.label}`} label={file.label} plain dimColor={dim} onPress={() => openFile($, file)} />
     )
 
-    // Only the terminal keeps a file: Link (others draw it plain), and no surface takes a Button inside a Text.
+    // Desktop draws a file: link as plain text, so it gets Buttons; the terminal opens Markdown links as it opens a reply's.
     const line =
       e.surface === 'terminal' ? (
-        <Text>
-          {shown.parts.map((part, index) => (
-            <Text key={part.text}>
-              {isDim(part) ? <Text dimColor>{linked(part)}</Text> : linked(part)}
-              {separator(index)}
-            </Text>
-          ))}
-          {featureName}
-        </Text>
+        <Markdown text={markdown} />
       ) : (
         <Box flexDirection="row" flexWrap="wrap">
           {shown.parts.map((part, index) => [
