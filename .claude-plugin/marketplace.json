@@ -59,6 +59,11 @@
       "name": "statusline-band",
       "source": "./plugins/statusline-band",
       "description": "A mod that shows the status line (context, cwd, git, model, plan, usage limits) in a band above the prompt in the Claude Code terminal only."
+    },
+    {
+      "name": "phrasing",
+      "source": "./plugins/phrasing",
+      "description": "A plugin that phrases messages from the current context in your own voice, learned from your samples in ~/.claude/phrasing/reference/. Skills: /phrase-ask."
     }
   ]
 }
