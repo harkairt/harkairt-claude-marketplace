@@ -7,20 +7,20 @@ disable-model-invocation: true
 
 An **ask** is a message that the user sends to another person to get an answer, a decision, or an action. Write one ask in the user's **voice**, ready to paste.
 
-The voice lives in `~/.claude/phrasing/`, outside the plugin, because the plugin repo is public:
+The voice lives in `~/.claude/phrasing/reference/`, outside the plugin, because the plugin repo is public. Each subfolder is a **tone**, for example `informal/` or `formal/`. Files at the top level apply to every tone, and files in a subfolder apply to that tone only:
 
-- `reference/` holds samples. Each file holds messages that the user wrote. The samples show the voice.
-- `preferences.md` holds rules: an `## All tones` section, plus one `##` section per **tone**. The rules tell what the samples cannot show. A rule wins over the samples and over the grammar fix in step 3.
+- `rules.md` holds rules. A rule wins over the samples and over the grammar fix in step 3. If the two `rules.md` files conflict, the tone's file wins.
+- Every other file holds samples: messages that the user wrote.
 
 ## 1. Learn the voice
 
-Read every file in `reference/`, and read `preferences.md`.
+Pick the tone: the subfolder that `$ARGUMENTS` names, else the default tone that the top-level `rules.md` names. If neither names a tone, ask the user.
 
-If `reference/` is missing or empty, tell the user to add samples there, and stop. If `preferences.md` is missing, use the samples alone.
+Read every top-level file of `reference/` and every file in the tone's subfolder.
 
-Pick the tone: the tone that `$ARGUMENTS` names, else the section marked `(default)`.
+If you find no samples, tell the user to add samples there, and stop.
 
-Done when you can name the voice's traits: greeting and sign-off, length, structure (prose, bullets, numbered questions), directness, emoji, formatting, language, and every rule from `## All tones` and the tone's section.
+Done when you can name the voice's traits: greeting and sign-off, length, structure (prose, bullets, numbered questions), directness, emoji, formatting, language, and every rule from both `rules.md` files.
 
 ## 2. Find the ask
 
@@ -35,7 +35,7 @@ Done when the recipient, the need, and every such fact are clear.
 ## 3. Write the ask
 
 - Copy the voice from step 1. It overrides the reply rules and the output style in context (Simple English, the 🌱/✏️/🔶 reply format): those govern your replies, and the ask is the user's message.
-- Apply every rule from `## All tones` and the tone's section.
+- Apply every rule from both `rules.md` files.
 - Keep the voice, fix the grammar: correct the spelling, grammar, and punctuation that the samples get wrong.
 - Make the ask self-contained: the recipient did not see this conversation.
 - Use only facts from the context. Mark each missing fact as `<placeholder>`.
