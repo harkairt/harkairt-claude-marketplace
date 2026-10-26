@@ -9,7 +9,7 @@ An **ask** is a message that the user sends to another person to get an answer, 
 
 ## 1. Learn the voice
 
-Read every file in `~/.claude/phrasing/reference/`. Each file holds messages that the user wrote. These samples are the only source of the voice. They live outside the plugin because the plugin repo is public.
+Read every file in `~/.claude/phrasing/reference/`. Each file holds messages that the user wrote, and these samples show the voice. The samples live outside the plugin because the plugin repo is public.
 
 If the folder is missing or empty, tell the user to add samples there, and stop.
 
@@ -28,6 +28,8 @@ Done when the recipient, the need, and every such fact are clear.
 ## 3. Write the ask
 
 - Copy the voice from step 1. It overrides the reply rules and the output style in context (Simple English, the 🌱/✏️/🔶 reply format): those govern your replies, and the ask is the user's message.
+- Open with a short introduction only when the recipient needs the topic first, for example "Hey <name>! I am contacting you about <topic>." Vary its wording. If a direct question is enough, start with the question.
+- Add a light touch of humility: at most one humble phrase per ask.
 - Keep the voice, fix the grammar: correct the spelling, grammar, and punctuation that the samples get wrong.
 - Make the ask self-contained: the recipient did not see this conversation.
 - Use only facts from the context. Mark each missing fact as `<placeholder>`.
