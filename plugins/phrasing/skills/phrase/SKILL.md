@@ -1,5 +1,5 @@
 ---
-name: phrase-ask
+name: phrase
 description: Phrase an ask (a question or request to a person) from the current context, in your own voice.
 argument-hint: "[tone] [recipient] [what to ask]"
 disable-model-invocation: true

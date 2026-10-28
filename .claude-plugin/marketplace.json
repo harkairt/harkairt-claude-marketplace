@@ -63,7 +63,7 @@
     {
       "name": "phrasing",
       "source": "./plugins/phrasing",
-      "description": "A plugin that phrases messages from the current context in your own voice, learned from your samples and rules in ~/.claude/phrasing/reference/. Skills: /phrase-ask."
+      "description": "A plugin that phrases messages from the current context in your own voice, learned from your samples and rules in ~/.claude/phrasing/reference/. Skills: /phrase."
     }
   ]
 }
