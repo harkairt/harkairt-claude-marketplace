@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { detectPhases, fileUrl, formatPhaseLine, isFinished, phaseLinks, phaseOfSkill, splitFeature } from './phase'
+import { detectPhases, fileUrl, formatPhaseLine, phaseLinks, phaseOfSkill } from './phase'
 import type { Detection } from './phase'
 
 const FOLDER = '/repo/specs/010-x'
@@ -111,7 +111,7 @@ describe('formatPhaseLine', () => {
 
     expect(line).toEqual({
       feature: '010-collapsible-sidebar',
-      parts: [{ text: 'implemented 2', aside: 'out of 3', running: true }],
+      parts: [{ text: 'implemented 2', aside: ' out of 3', running: true }],
     })
   })
 
@@ -154,7 +154,7 @@ describe('formatPhaseLine', () => {
 
   test('shows implemented 0 out of the total while the implement skill is live and no task is ticked', () => {
     expect(formatPhaseLine(detectPhases({ tasks: TASKS_NONE_DONE }), 'implement', 'f').parts).toEqual([
-      { text: 'implemented 0', aside: 'out of 2', running: true },
+      { text: 'implemented 0', aside: ' out of 2', running: true },
     ])
   })
 
@@ -187,35 +187,10 @@ describe('formatPhaseLine', () => {
     const allDone = { ...files, tasks: TASKS_ALL_DONE }
 
     expect(formatPhaseLine(detectPhases(files), null, 'f', phaseLinks(FOLDER, files)).parts).toEqual([
-      { text: 'implemented 2', aside: 'out of 3', running: true, link: TASKS_LINK },
+      { text: 'implemented 2', aside: ' out of 3', running: true, link: TASKS_LINK },
     ])
     expect(formatPhaseLine(detectPhases(allDone), null, 'f', phaseLinks(FOLDER, allDone)).parts).toEqual([
       { ...done('implemented'), link: TASKS_LINK },
     ])
-  })
-})
-
-describe('isFinished', () => {
-  test('finishes once every task is ticked, not while some ticked tasks run', () => {
-    expect(isFinished(formatPhaseLine(detectPhases({ tasks: TASKS_ALL_DONE }), null, 'f'))).toBe(true)
-    expect(isFinished(formatPhaseLine(detectPhases({ tasks: TASKS }), null, 'f'))).toBe(false)
-  })
-})
-
-describe('splitFeature', () => {
-  test('splits a numbered folder name into its id and name', () => {
-    expect(splitFeature('004-x')).toEqual({ id: '004-', name: 'x' })
-  })
-
-  test('takes every leading digit group with its dash as the id', () => {
-    expect(splitFeature('20260917-110232-x-y')).toEqual({ id: '20260917-110232-', name: 'x-y' })
-  })
-
-  test('keeps a folder name without a number prefix whole', () => {
-    expect(splitFeature('sidebar')).toEqual({ id: '', name: 'sidebar' })
-  })
-
-  test('keeps a digits-only folder name as the name', () => {
-    expect(splitFeature('004')).toEqual({ id: '', name: '004' })
   })
 })

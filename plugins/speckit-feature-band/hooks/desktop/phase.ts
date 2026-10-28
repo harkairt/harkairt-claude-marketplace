@@ -1,10 +1,10 @@
-import type { FileLink, Phase, PhaseLine, PhasePart } from '../types'
+import type { DesktopFileLink, DesktopPhase, DesktopPhaseLine, DesktopPhasePart } from '../../types'
 
 export type PhaseStatus = 'none' | 'running' | 'done'
 
 export type PhaseFiles = { spec?: string; plan?: string; tasks?: string }
 
-export type PhaseLinks = Partial<Record<Phase, FileLink>>
+export type PhaseLinks = Partial<Record<DesktopPhase, DesktopFileLink>>
 
 export type Detection = {
   specify: PhaseStatus
@@ -15,16 +15,16 @@ export type Detection = {
   total: number
 }
 
-export const PHASES: readonly Phase[] = ['specify', 'plan', 'tasks', 'implement']
+export const PHASES: readonly DesktopPhase[] = ['specify', 'plan', 'tasks', 'implement']
 
-const WORDS: Record<Phase, { done: string; running: string }> = {
+const WORDS: Record<DesktopPhase, { done: string; running: string }> = {
   specify: { done: 'specified', running: 'specifying' },
   plan: { done: 'planned', running: 'planning' },
   tasks: { done: 'tasked', running: 'tasking' },
   implement: { done: 'implemented', running: 'implementing' },
 }
 
-const PHASE_FILES: Record<Phase, keyof PhaseFiles> = {
+const PHASE_FILES: Record<DesktopPhase, keyof PhaseFiles> = {
   specify: 'spec',
   plan: 'plan',
   tasks: 'tasks',
@@ -72,10 +72,6 @@ export function detectPhases(files: PhaseFiles): Detection {
   }
 }
 
-export function fileUrl(path: string): string {
-  return `file://${path.split('/').map(encodeURIComponent).join('/')}`
-}
-
 export function phaseLinks(folder: string, files: PhaseFiles): PhaseLinks {
   const links: PhaseLinks = {}
   for (const phase of PHASES) {
@@ -88,10 +84,10 @@ export function phaseLinks(folder: string, files: PhaseFiles): PhaseLinks {
   return links
 }
 
-export function phaseOfSkill(skill: string): Phase | undefined {
+export function phaseOfSkill(skill: string): DesktopPhase | undefined {
   const match = SKILL_NAME.exec(skill)
 
-  return match === null ? undefined : (match[1] as Phase)
+  return match === null ? undefined : (match[1] as DesktopPhase)
 }
 
 export function splitFeature(feature: string): { id: string; name: string } {
@@ -100,20 +96,25 @@ export function splitFeature(feature: string): { id: string; name: string } {
   return { id, name: feature.slice(id.length) }
 }
 
-export function isFinished(line: PhaseLine): boolean {
+export function isFinished(line: DesktopPhaseLine): boolean {
   return line.parts.length === 1 && line.parts[0]?.text === WORDS.implement.done
 }
 
-function withLink(part: PhasePart, link: FileLink | undefined): PhasePart {
+function withLink(part: DesktopPhasePart, link: DesktopFileLink | undefined): DesktopPhasePart {
   return link === undefined ? part : { ...part, link }
 }
 
-export function formatPhaseLine(detection: Detection, live: Phase | null, feature: string, links: PhaseLinks = {}): PhaseLine {
+export function formatPhaseLine(
+  detection: Detection,
+  live: DesktopPhase | null,
+  feature: string,
+  links: PhaseLinks = {},
+): DesktopPhaseLine {
   if (detection.implement === 'done') {
     return { feature, parts: [withLink({ text: WORDS.implement.done, running: false }, links.implement)] }
   }
   if (detection.implement === 'running' || live === 'implement') {
-    const part: PhasePart =
+    const part: DesktopPhasePart =
       detection.total > 0
         ? { text: `${WORDS.implement.done} ${detection.ticked}`, aside: ` out of ${detection.total}`, running: true }
         : { text: WORDS.implement.running, running: true }
@@ -121,7 +122,7 @@ export function formatPhaseLine(detection: Detection, live: Phase | null, featur
     return { feature, parts: [withLink(part, links.implement)] }
   }
 
-  const parts: PhasePart[] = []
+  const parts: DesktopPhasePart[] = []
   for (const phase of PHASES) {
     const status = detection[phase]
     if (status === 'done') {

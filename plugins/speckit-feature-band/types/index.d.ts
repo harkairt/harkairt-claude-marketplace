@@ -1,13 +1,26 @@
-export type Phase = 'specify' | 'plan' | 'tasks' | 'implement'
+export type DesktopPhase = 'specify' | 'plan' | 'tasks' | 'implement'
 
-export type FileLink = { label: string; path: string }
+export type DesktopFileLink = { label: string; path: string }
 
-export type PhasePart = { text: string; aside?: string; running: boolean; link?: FileLink }
+export type DesktopPhasePart = { text: string; aside?: string; running: boolean; link?: DesktopFileLink }
 
-export type PhaseLine = { feature: string; parts: PhasePart[] }
+export type DesktopPhaseLine = { feature: string; parts: DesktopPhasePart[] }
+
+export type TerminalPhase = 'specify' | 'plan' | 'tasks' | 'implement'
+
+export type TerminalFileLink = { label: string; path: string }
+
+export type TerminalPhasePart = { text: string; aside?: string; running: boolean; link?: TerminalFileLink }
+
+export type TerminalPhaseLine = { feature: string; parts: TerminalPhasePart[] }
 
 declare module 'claude-code' {
   interface PluginState {
-    'speckit-feature-band': { phase: PhaseLine | null; live: Phase | null }
+    'speckit-feature-band': {
+      desktopPhase: DesktopPhaseLine | null
+      desktopLive: DesktopPhase | null
+      terminalPhase: TerminalPhaseLine | null
+      terminalLive: TerminalPhase | null
+    }
   }
 }
