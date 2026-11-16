@@ -3,7 +3,7 @@
   "owner": {
     "name": "harkairt"
   },
-  "version": "1.0.21",
+  "version": "1.0.22",
   "plugins": [
     {
       "name": "print-hook-inputs",
@@ -68,7 +68,7 @@
     {
       "name": "jira-watch",
       "source": "./plugins/jira-watch",
-      "description": "A plugin that watches Jira cards for new comments with a background script, so the session wakes only when a comment arrives. It starts one sub-session for each card in cards.txt and reports sub-sessions of removed cards as stale. Data lives in the plugin data directory. Skills: /jira-watch."
+      "description": "A plugin that watches Jira cards for new comments with a background script, so the session wakes only when a comment arrives. It also reports description and status changes. It starts one sub-session for each card in cards.txt, and for the subtasks of cards marked with (*) under the session of their parent, and reports sub-sessions of removed cards as stale. Data lives in the plugin data directory. Skills: /jira-watch."
     }
   ]
 }
