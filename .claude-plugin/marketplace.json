@@ -3,7 +3,7 @@
   "owner": {
     "name": "harkairt"
   },
-  "version": "1.0.18",
+  "version": "1.0.19",
   "plugins": [
     {
       "name": "print-hook-inputs",
@@ -64,6 +64,11 @@
       "name": "phrasing",
       "source": "./plugins/phrasing",
       "description": "A plugin that phrases messages from the current context in your own voice, learned from your samples and rules in ~/.claude/phrasing/reference/. Skills: /phrase."
+    },
+    {
+      "name": "jira-watch",
+      "source": "./plugins/jira-watch",
+      "description": "A plugin that watches Jira cards for new comments with a background script, so the session wakes only when a comment arrives. Data lives in ~/.config/harkairt-claude-marketplace/jira-watch/. Skills: /jira-watch."
     }
   ]
 }
