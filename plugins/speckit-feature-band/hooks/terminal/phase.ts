@@ -109,7 +109,7 @@ export function formatPhaseLine(
   if (detection.implement === 'running' || live === 'implement') {
     const part: TerminalPhasePart =
       detection.total > 0
-        ? { text: `${WORDS.implement.done} ${detection.ticked}`, aside: ` out of ${detection.total}`, running: true }
+        ? { text: `${WORDS.implement.done} ${detection.ticked}`, aside: `out of ${detection.total}`, running: true }
         : { text: WORDS.implement.running, running: true }
 
     return { feature, parts: [withLink(part, links.implement)] }

@@ -2,7 +2,7 @@
 name: phrase
 description: Phrase an ask (a question or request to a person) from the current context, in your own voice.
 argument-hint: "[tone] [recipient] [what to ask]"
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 An **ask** is a message that the user sends to another person to get an answer, a decision, or an action. Write one ask in the user's **voice**, ready to paste.

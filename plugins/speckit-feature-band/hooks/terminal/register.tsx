@@ -7,7 +7,7 @@ import { detectPhases, fileUrl, formatPhaseLine, phaseLinks, phaseOfSkill } from
 const WRITING_TOOLS = /^(Write|Edit|MultiEdit|NotebookEdit|Bash)$/
 const POLL_MS = 60_000
 const NBSP = String.fromCharCode(0xa0)
-const BETWEEN_STAGES = `-${NBSP}${NBSP}`
+const BETWEEN_STAGES = `,${NBSP}`
 const phase = atom({ plugin: 'speckit-feature-band', key: 'terminalPhase' } as const, null)
 const live = atom({ plugin: 'speckit-feature-band', key: 'terminalLive' } as const, null)
 // The engine refuses a second hook without a matcher on one event in a plugin; an empty matcher matches every input.
