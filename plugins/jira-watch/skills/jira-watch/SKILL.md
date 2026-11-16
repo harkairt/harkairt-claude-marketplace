@@ -6,7 +6,7 @@ argument-hint: "<project> [card keys...]"
 
 A background script polls Jira and exits at the first new comment. The exit wakes this session. The session reads the comment, tells the user, and starts the script again. While nobody comments, the transcript gets no lines.
 
-Data lives outside the plugin, in `~/.config/harkairt-claude-marketplace/jira-watch/`:
+Data lives in the plugin data directory, `${CLAUDE_PLUGIN_DATA}`. It survives plugin updates. Write no state in `${CLAUDE_PLUGIN_ROOT}`.
 
 - `credentials.env` holds `JIRA_EMAIL`, `JIRA_API_TOKEN` and `JIRA_BASE` (for example `https://example.atlassian.net`). All projects share it.
 - `projects/<project>/cards.txt` holds one card key per line.
@@ -20,7 +20,7 @@ Data lives outside the plugin, in `~/.config/harkairt-claude-marketplace/jira-wa
 Check that `credentials.env` exists with `ls -l`. Never read it, print it or ask for the token in chat. If it is missing, give the user this command for a real terminal (not the chat box), then wait:
 
 ```bash
-umask 077; mkdir -p ~/.config/harkairt-claude-marketplace/jira-watch; read "e?Atlassian email: "; read -s "t?API token: "; read "b?Jira base URL: "; printf 'JIRA_EMAIL=%s\nJIRA_API_TOKEN=%s\nJIRA_BASE=%s\n' "$e" "$t" "$b" > ~/.config/harkairt-claude-marketplace/jira-watch/credentials.env; unset e t b; echo; echo saved
+umask 077; mkdir -p "${CLAUDE_PLUGIN_DATA}"; read "e?Atlassian email: "; read -s "t?API token: "; read "b?Jira base URL: "; printf 'JIRA_EMAIL=%s\nJIRA_API_TOKEN=%s\nJIRA_BASE=%s\n' "$e" "$t" "$b" > "${CLAUDE_PLUGIN_DATA}/credentials.env"; unset e t b; echo; echo saved
 ```
 
 The user creates the token at https://id.atlassian.com/manage-profile/security/api-tokens.
@@ -34,8 +34,10 @@ Add each card key from `$ARGUMENTS` to `projects/<project>/cards.txt` (create th
 Run this with Bash and `run_in_background: true`. Do not use Monitor: it stops after 30 minutes.
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/bin/jira-watch.sh <project>
+JIRA_WATCH_HOME="${CLAUDE_PLUGIN_DATA}" "${CLAUDE_PLUGIN_ROOT}/bin/jira-watch.sh" <project>
 ```
+
+The script does not receive `CLAUDE_PLUGIN_DATA` from Claude Code, so the command passes it as `JIRA_WATCH_HOME`.
 
 ## 4. On exit
 

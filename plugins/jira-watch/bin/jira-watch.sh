@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -u
 
-ROOT="${JIRA_WATCH_HOME:-$HOME/.config/harkairt-claude-marketplace/jira-watch}"
+ROOT="${JIRA_WATCH_HOME:?set JIRA_WATCH_HOME to the plugin data directory}"
 PROJECT="${1:?usage: jira-watch.sh <project>}"
 PROJ_DIR="$ROOT/projects/$PROJECT"
 CARDS_FILE="$PROJ_DIR/cards.txt"

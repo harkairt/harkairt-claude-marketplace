@@ -7,7 +7,7 @@ disable-model-invocation: false
 
 An **ask** is a message that the user sends to another person to get an answer, a decision, or an action. Write one ask in the user's **voice**, ready to paste.
 
-The voice lives in `~/.claude/phrasing/reference/`, outside the plugin, because the plugin repo is public. Each subfolder is a **tone**, for example `informal/` or `formal/`. Files at the top level apply to every tone, and files in a subfolder apply to that tone only:
+The voice lives in `${CLAUDE_PLUGIN_DATA}/reference/`, outside the plugin, because the plugin repo is public. Each subfolder is a **tone**, for example `informal/` or `formal/`. Files at the top level apply to every tone, and files in a subfolder apply to that tone only:
 
 - `rules.md` holds rules. A rule wins over the samples and over the grammar fix in step 3. If the two `rules.md` files conflict, the tone's file wins.
 - Every other file holds samples: messages that the user wrote.

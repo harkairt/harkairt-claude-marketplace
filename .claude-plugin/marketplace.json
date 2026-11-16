@@ -3,7 +3,7 @@
   "owner": {
     "name": "harkairt"
   },
-  "version": "1.0.19",
+  "version": "1.0.20",
   "plugins": [
     {
       "name": "print-hook-inputs",
@@ -68,7 +68,7 @@
     {
       "name": "jira-watch",
       "source": "./plugins/jira-watch",
-      "description": "A plugin that watches Jira cards for new comments with a background script, so the session wakes only when a comment arrives. Data lives in ~/.config/harkairt-claude-marketplace/jira-watch/. Skills: /jira-watch."
+      "description": "A plugin that watches Jira cards for new comments with a background script, so the session wakes only when a comment arrives. Data lives in the plugin data directory. Skills: /jira-watch."
     }
   ]
 }
