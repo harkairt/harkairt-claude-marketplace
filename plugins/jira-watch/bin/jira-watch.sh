@@ -6,6 +6,7 @@ PROJECT="${1:?usage: jira-watch.sh <project>}"
 PROJ_DIR="$ROOT/projects/$PROJECT"
 CARDS_FILE="$PROJ_DIR/cards.txt"
 STATE_DIR="$PROJ_DIR/state"
+SNAP="$STATE_DIR/cards.snapshot"
 
 [ -f "$CARDS_FILE" ] || { echo "WATCHER ERROR: missing $CARDS_FILE"; exit 1; }
 
@@ -25,6 +26,26 @@ api() {
   curl -sS --fail --max-time 30 -u "$JIRA_EMAIL:$JIRA_API_TOKEN" -H "Accept: application/json" "$JIRA_BASE$1" 2>/dev/null
 }
 
+current_keys() {
+  grep -vE '^[[:space:]]*(#|$)' "$CARDS_FILE" | awk '{print $1}' | sort -u
+}
+
+cards_changed() {
+  current_keys > "$SNAP.new"
+  ! cmp -s "$SNAP" "$SNAP.new"
+}
+
+cards_events() {
+  added="$(comm -13 "$SNAP" "$SNAP.new" | tr '\n' ' ')"
+  removed="$(comm -23 "$SNAP" "$SNAP.new" | tr '\n' ' ')"
+  mv "$SNAP.new" "$SNAP"
+  [ -n "$added" ] && echo "CARDS ADDED: ${added% }"
+  [ -n "$removed" ] && echo "CARDS REMOVED: ${removed% }"
+  return 0
+}
+
+[ -f "$SNAP" ] || current_keys > "$SNAP"
+
 MY_ID=""
 until MY_ID="$(api /rest/api/3/myself | jq -r .accountId)" && [ -n "$MY_ID" ] && [ "$MY_ID" != "null" ]; do
   sleep "$INTERVAL"
@@ -32,6 +53,9 @@ done
 
 while true; do
   out=""
+  if cards_changed; then
+    out+="$(cards_events)"$'\n'
+  fi
   while read -r KEY; do
     case "$KEY" in ""|\#*) continue ;; esac
     seen="$STATE_DIR/$KEY.seen"
@@ -50,9 +74,14 @@ while true; do
       out+="NEW COMMENT $KEY id=$id by $(echo "$c" | jq -r .name): $(echo "$c" | jq -r .text | cut -c1-300)"$'\n'
     done <<< "$comments"
   done < "$CARDS_FILE"
-  if [ -n "$out" ]; then
+  if [ -n "$(echo "$out" | tr -d '[:space:]')" ]; then
     printf '%s' "$out"
     exit 0
   fi
-  sleep "$INTERVAL"
+  waited=0
+  while [ "$waited" -lt "$INTERVAL" ]; do
+    sleep 5
+    waited=$((waited + 5))
+    cards_changed && break
+  done
 done
