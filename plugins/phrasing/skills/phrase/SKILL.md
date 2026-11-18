@@ -1,11 +1,15 @@
 ---
 name: phrase
-description: Phrase an ask (a question or request to a person) from the current context, in your own voice.
-argument-hint: "[tone] [recipient] [what to ask]"
+description: Phrase a message from the current context in your own voice: an ask, an FYI, or a summary.
+argument-hint: "[tone] [kind] [reader] [what to say]"
 disable-model-invocation: false
 ---
 
-An **ask** is a message that the user sends to another person to get an answer, a decision, or an action. Write one ask in the user's **voice**, ready to paste.
+A **message** is text that the user sends to one or more **readers**. Write one message in the user's **voice**, ready to paste. Each message has one **kind**:
+
+- **Ask**: gets an answer, a decision, or an action.
+- **FYI**: lets the readers know about a change, a result, or a plan.
+- **Summary**: condenses a thread, a meeting, or a piece of work.
 
 The voice lives in `${CLAUDE_PLUGIN_DATA}/reference/`, outside the plugin, because the plugin repo is public. Each subfolder is a **tone**, for example `informal/` or `formal/`. Files at the top level apply to every tone, and files in a subfolder apply to that tone only:
 
@@ -22,24 +26,32 @@ If you find no samples, tell the user to add samples there, and stop.
 
 Done when you can name the voice's traits: greeting and sign-off, length, structure (prose, bullets, numbered questions), directness, emoji, formatting, language, and every rule from both `rules.md` files.
 
-## 2. Find the ask
+## 2. Find the message
 
-Take the recipient and the need from `$ARGUMENTS`. If `$ARGUMENTS` is empty, take them from the conversation: an open question, a blocker, or a "🔧 Do" item that needs another person.
+Take the kind, the readers, and the content from `$ARGUMENTS`. If `$ARGUMENTS` is empty, take them from the conversation:
 
-Collect every fact the recipient needs to answer without a follow-up question: links, ticket ids, file paths, error text, what the user already tried, the options under decision.
+- Ask: an open question, a blocker, or a decision that needs another person.
+- FYI: a change, a result, or a plan that other people must know about.
+- Summary: finished work, or a thread or meeting that other people did not follow.
 
-If you cannot tell the recipient or the need, ask the user, then continue.
+Collect every fact the readers need to understand the message without a follow-up question: links, ticket ids, file paths, error text. Then collect the facts that the kind needs:
 
-Done when the recipient, the need, and every such fact are clear.
+- Ask: the need, the options under decision, and what the user already tried.
+- FYI: what changed, why, and what it changes for the readers, with the action they must take, if any.
+- Summary: the outcome, the decisions, and the open items.
 
-## 3. Write the ask
+If you cannot tell the kind, the readers, or the content, ask the user, then continue.
 
-- Copy the voice from step 1. It overrides the reply rules and the output style in context (Simple English, the 🌱/✏️/🔶 reply format): those govern your replies, and the ask is the user's message.
+Done when the kind, the readers, and every such fact are clear.
+
+## 3. Write the message
+
+- Copy the voice from step 1. It overrides the reply rules and the output style in context, for example Simple English: those govern your replies, and the message is the user's text.
 - Apply every rule from both `rules.md` files.
 - Keep the voice, fix the grammar: correct the spelling, grammar, and punctuation that the samples get wrong.
-- Make the ask self-contained: the recipient did not see this conversation.
+- Make the message self-contained: the readers did not see this conversation.
 - Use only facts from the context. Mark each missing fact as `<placeholder>`.
 
 ## 4. Hand it over
 
-Print the ask in one fenced code block, so the user can copy it. Under the block, list the placeholders to fill, if any. The user sends the message.
+Print the message in one fenced code block, so the user can copy it. Under the block, list the placeholders to fill, if any. The user sends the message.
